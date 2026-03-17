@@ -1,0 +1,17 @@
+# Generated docker-compose files
+docker-compose.generated.yml
+
+# Downloaded/generated chain configs (populated by configure-l2s)
+configs/v30.2/chain_*.yaml
+configs/v30.2/wallets_*.yaml
+configs/v30.2/contracts_*.yaml
+configs/v30.2/genesis.json
+configs/v30.2/l1-state.json.gz
+configs/v30.2/.workspace/
+
+# Genesis generator Docker build cache
+genesis/.docker-built
+
+# Editor
+.DS_Store
+*.swp

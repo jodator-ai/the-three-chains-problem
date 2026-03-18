@@ -233,7 +233,8 @@ generate_l2_config() {
   local -r out="$output_dir/chain_${chain_id}.yaml"
   cat > "$out" <<EOF
 general:
-  ephemeral: true
+  ephemeral: false
+  rocks_db_path: /db/node1
 ${gateway_line:+${gateway_line}
 }genesis:
   bridgehub_address: '${bridgehub}'

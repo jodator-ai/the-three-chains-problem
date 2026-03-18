@@ -2,14 +2,14 @@
 # Prividium instance for chain ID: 6565
 # Ports: admin=3000 user=3001 api=8000 keycloak=5080 zksyncos=5050
 #
-# Includes docker-compose-deps-6565.yaml (zksyncos, keycloak, block-explorer)
-# which in turn includes docker-compose-l1.yaml (Anvil L1, shared postgres).
+# Includes docker-compose.6565.deps.yml (zksyncos, keycloak, block-explorer)
+# which in turn includes docker-compose.l1.yml (Anvil L1, shared postgres).
 # A single: docker compose -f docker-compose-6565.yaml up
 # brings up the full stack.
 name: zksync-prividiums
 
 include:
-  - docker-compose-deps-6565.yaml
+  - docker-compose.6565.deps.yml
 
 services:
 

@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 if [[ $# -eq 0 ]]; then
-  exec docker compose -f docker-compose-6565.yaml -f docker-compose-6566.yaml -f docker-compose-6567.yaml up -d
+  exec docker compose -f docker-compose.6565.yml -f docker-compose.6566.yml -f docker-compose.6567.yml up -d
 else
-  exec docker compose -f docker-compose-6565.yaml -f docker-compose-6566.yaml -f docker-compose-6567.yaml "$@"
+  exec docker compose -f docker-compose.6565.yml -f docker-compose.6566.yml -f docker-compose.6567.yml "$@"
 fi

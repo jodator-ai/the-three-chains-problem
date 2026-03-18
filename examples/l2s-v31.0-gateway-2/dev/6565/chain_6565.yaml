@@ -1,5 +1,6 @@
 general:
-  ephemeral: true
+  ephemeral: false
+  rocks_db_path: /db/node1
   gateway_rpc_url: 'http://gateway-506:3052'
 genesis:
   bridgehub_address: '0x589cd43f17f3d2fc803a2c6b413b48c42dadc2ee'

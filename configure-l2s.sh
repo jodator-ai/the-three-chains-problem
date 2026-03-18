@@ -184,6 +184,7 @@ check_genesis_requirement() {
 # v31.0: downloaded from upstream on first run; cached in configs/v31.0/
 ensure_l1_state() {
   local -r dest="$1"
+  mkdir -p "$(dirname "$dest")"
 
   if [[ "$version" == "v30.2" ]]; then
     local -r src="$SCRIPT_DIR/configs/v30.2/l1-state.json.gz"
@@ -223,6 +224,7 @@ generate_chain_configs() {
 # v31.0: downloaded from upstream (newer images don't ship local-chains/)
 ensure_genesis_json() {
   local -r dest="$1"
+  mkdir -p "$(dirname "$dest")"
 
   if [[ "$version" == "v31.0" ]]; then
     download_file "$V310_GENESIS_URL" "$dest" "v31.0 genesis.json"
@@ -244,6 +246,7 @@ ensure_genesis_json() {
 # Downloaded from upstream on first run (v31.0 gateway mode only)
 ensure_gateway_db() {
   local -r dest="$1"
+  mkdir -p "$(dirname "$dest")"
   download_file "$V310_GATEWAY_DB_URL" "$dest" "v31.0 gateway-db.tar.gz (~1.4 MB)"
 }
 
@@ -272,7 +275,7 @@ print_summary() {
 
   if [[ "$gateway" == true ]]; then
     echo "  Gateway:  ID=$GATEWAY_CHAIN_ID  RPC → http://localhost:$GATEWAY_EXTERNAL_PORT  (settles to L1)"
-    compose_args="$compose_args -f docker-compose.gateway-${GATEWAY_CHAIN_ID}.yml"
+    compose_args="$compose_args -f docker-compose.${GATEWAY_CHAIN_ID}.yml"
   fi
 
   local i chain_id ext_port
@@ -282,7 +285,7 @@ print_summary() {
     local settle_label="→ L1"
     [[ "$gateway" == true ]] && settle_label="→ gateway-$GATEWAY_CHAIN_ID"
     echo "  Chain $i:  ID=$chain_id  RPC → http://localhost:$ext_port  (settles $settle_label)"
-    compose_args="$compose_args -f docker-compose.zksyncos-${chain_id}.yml"
+    compose_args="$compose_args -f docker-compose.${chain_id}.yml"
   done
 
   echo ""
@@ -319,7 +322,7 @@ main() {
   echo ""
 
   check_genesis_requirement "$prebuilt_max"
-  ensure_l1_state "$dev_dir/l1-state.json.gz"
+  ensure_l1_state "$dev_dir/l1/l1-state.json.gz"
   generate_chain_configs "$dev_dir"
   # Move each chain config into its own per-chain subdir
   local i chain_id
@@ -332,8 +335,8 @@ main() {
     mkdir -p "$dev_dir/$GATEWAY_CHAIN_ID"
     mv "$dev_dir/chain_${GATEWAY_CHAIN_ID}.yaml" "$dev_dir/$GATEWAY_CHAIN_ID/"
   fi
-  ensure_genesis_json "$dev_dir/genesis.json"
-  [[ "$gateway" == true ]] && ensure_gateway_db "$dev_dir/gateway-db.tar.gz"
+  ensure_genesis_json "$dev_dir/l1/genesis.json"
+  [[ "$gateway" == true ]] && ensure_gateway_db "$dev_dir/l1/gateway-db.tar.gz"
   generate_compose_files "$out_dir" "$dev_dir"
 
   echo ""

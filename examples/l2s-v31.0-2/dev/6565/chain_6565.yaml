@@ -1,5 +1,6 @@
 general:
-  ephemeral: true
+  ephemeral: false
+  rocks_db_path: /db/node1
 genesis:
   bridgehub_address: '0x589cd43f17f3d2fc803a2c6b413b48c42dadc2ee'
   bytecode_supplier_address: '0x1b47ccd40a68f47698aca71cc84fb0525794cba7'

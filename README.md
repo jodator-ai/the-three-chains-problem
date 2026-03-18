@@ -43,8 +43,8 @@ L2 chains and posts them to L1, reducing L1 costs. It was introduced in protocol
 # Then use the printed docker compose command, e.g.:
 docker compose \
   -f out/docker-compose.l1.yml \
-  -f out/docker-compose.zksyncos-6565.yml \
-  -f out/docker-compose.zksyncos-6566.yml \
+  -f out/docker-compose.6565.yml \
+  -f out/docker-compose.6566.yml \
   up -d
 ```
 
@@ -82,14 +82,18 @@ configure-l2s.sh --count=N [--version=v31.0] [--gateway] [--output=DIR]
        │
        │  Wipes and recreates --output (default: ./out) then writes everything there:
        │
-       ├── l1-state.json.gz    — copied from configs/v30.2/ (or downloaded for v31.0)
-       ├── chain_XXXX.yaml     — per-chain config (bridgehub, keys, pubdata mode)
-       ├── chain_506.yaml      — gateway chain config (gateway mode only)
-       ├── genesis.json        — extracted from image (v30.2) or downloaded (v31.0)
-       ├── gateway-db.tar.gz   — pre-seeded gateway state (gateway mode only)
+       ├── dev/
+       │   ├── l1/
+       │   │   ├── l1-state.json.gz    — copied from configs/v30.2/ (or downloaded for v31.0)
+       │   │   ├── genesis.json        — extracted from image (v30.2) or downloaded (v31.0)
+       │   │   └── gateway-db.tar.gz   — pre-seeded gateway state (gateway mode only)
+       │   ├── XXXX/
+       │   │   └── chain_XXXX.yaml     — per-chain config (bridgehub, keys, pubdata mode)
+       │   └── 506/
+       │       └── chain_506.yaml      — gateway chain config (gateway mode only)
        ├── docker-compose.l1.yml
-       ├── docker-compose.gateway-506.yml  (gateway mode only)
-       └── docker-compose.zksyncos-XXXX.yml (one per chain)
+       ├── docker-compose.506.yml          (gateway mode only)
+       └── docker-compose.XXXX.yml         (one per chain)
 ```
 
 ---
@@ -109,10 +113,9 @@ All instances share a single L1 (Anvil).
 ./configure-prividiums.sh --count=3
 
 docker compose \
-  -f out/docker-compose.l1.yml \
-  -f out/docker-compose.prividium-6565.yml \
-  -f out/docker-compose.prividium-6566.yml \
-  -f out/docker-compose.prividium-6567.yml \
+  -f out/docker-compose.6565.yml \
+  -f out/docker-compose.6566.yml \
+  -f out/docker-compose.6567.yml \
   up -d
 ```
 

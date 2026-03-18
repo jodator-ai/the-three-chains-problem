@@ -17,7 +17,7 @@ services:
     volumes:
       - zksyncos_6565_db:/db
       - ./dev/6565/chain_6565.yaml:/configs/chain_6565.yaml:ro
-      - ./dev/genesis.json:/app/local-chains/v30.2/genesis.json:ro
+      - ./dev/l1/genesis.json:/app/local-chains/v31.0/genesis.json:ro
     depends_on:
       l1:
         condition: service_healthy

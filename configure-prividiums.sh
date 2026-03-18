@@ -122,6 +122,7 @@ parse_args() {
 # ── step: copy l1-state ───────────────────────────────────────────────────────
 copy_l1_state() {
   local -r dest="$1"
+  mkdir -p "$(dirname "$dest")"
   local -r src="$SCRIPT_DIR/configs/$version/l1-state.json.gz"
   file_exists "$src" \
     || die "L1 state not found: $src — ensure configs/$version/l1-state.json.gz is present in the repo."
@@ -142,6 +143,7 @@ generate_chain_configs() {
 # ── step: extract genesis.json ────────────────────────────────────────────────
 ensure_genesis_json() {
   local -r dest="$1"
+  mkdir -p "$(dirname "$dest")"
   info "Extracting genesis.json from zksync-os-server image..."
   docker run --rm \
     --platform linux/amd64 \
@@ -156,6 +158,7 @@ ensure_genesis_json() {
 # ── step: download keycloak realm ─────────────────────────────────────────────
 download_keycloak_realm() {
   local -r dest="$1"
+  mkdir -p "$(dirname "$dest")"
   info "Downloading Keycloak realm config from local-prividium..."
 
   if cmd_exists curl; then
@@ -168,7 +171,7 @@ download_keycloak_realm() {
     die "Neither curl nor wget found. Install one to proceed."
   fi
 
-  log "Downloaded keycloak-realm.json → $dest"
+  log "Downloaded realm-export.json → $dest"
 }
 
 # ── step: generate compose files ─────────────────────────────────────────────
@@ -203,8 +206,8 @@ print_summary() {
     echo "    Block Explorer→ http://localhost:$(( 3010 + offset ))"
     echo "    zkSync RPC    → http://localhost:$(( 5050 + offset ))"
     echo "    Keycloak      → http://localhost:$(( 5080 + offset ))"
-    [[ -n "$compose_args" ]] && compose_args="$compose_args -f docker-compose-${chain_id}.yaml" \
-                              || compose_args="-f docker-compose-${chain_id}.yaml"
+    [[ -n "$compose_args" ]] && compose_args="$compose_args -f docker-compose.${chain_id}.yml" \
+                              || compose_args="-f docker-compose.${chain_id}.yml"
   done
 
   echo ""
@@ -246,7 +249,7 @@ main() {
   log "Configuring $count Prividium instance(s) for ZKsync OS $version → $out_dir"
   echo ""
 
-  copy_l1_state "$dev_dir/l1-state.json.gz"
+  copy_l1_state "$dev_dir/l1/l1-state.json.gz"
   generate_chain_configs "$dev_dir"
   # Move each chain config into its own per-chain subdir
   local i chain_id
@@ -255,8 +258,8 @@ main() {
     mkdir -p "$dev_dir/$chain_id"
     mv "$dev_dir/chain_${chain_id}.yaml" "$dev_dir/$chain_id/"
   done
-  ensure_genesis_json "$dev_dir/genesis.json"
-  download_keycloak_realm "$dev_dir/keycloak-realm.json"
+  ensure_genesis_json "$dev_dir/l1/genesis.json"
+  download_keycloak_realm "$dev_dir/keycloak/realm-export.json"
   generate_compose_files "$out_dir" "$dev_dir"
 
   echo ""

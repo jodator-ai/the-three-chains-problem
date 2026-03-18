@@ -5,7 +5,7 @@ services:
   l1:
     image: ghcr.io/foundry-rs/foundry:v1.3.4
     volumes:
-      - ./dev/l1-state.json.gz:/l1-state.json.gz:ro
+      - ./dev/l1/l1-state.json.gz:/l1-state.json.gz:ro
       - l1state:/home/foundry/l1state
     entrypoint: ''
     user: 'root'

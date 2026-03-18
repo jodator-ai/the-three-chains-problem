@@ -4,7 +4,7 @@
 #
 # Includes docker-compose.6566.deps.yml (zksyncos, keycloak, block-explorer)
 # which in turn includes docker-compose.l1.yml (Anvil L1, shared postgres).
-# A single: docker compose -f docker-compose-6566.yaml up
+# A single: docker compose -f docker-compose.6566.yml up
 # brings up the full stack.
 name: zksync-prividiums
 

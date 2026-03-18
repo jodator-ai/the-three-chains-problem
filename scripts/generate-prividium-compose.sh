@@ -178,6 +178,95 @@ EOF
   log "Generated $out"
 }
 
+# ── per-instance keycloak realm config ───────────────────────────────────────
+# Generated (not downloaded) so redirect URIs match each instance's actual ports.
+generate_keycloak_realm() {
+  local -r chain_id="$1"
+  local -r p_admin="$2"
+  local -r p_user="$3"
+  local -r p_explorer_api="$4"
+  local -r p_explorer_app="$5"
+  local -r p_keycloak="$6"
+
+  local -r out_dir="$configs_abs/keycloak/${chain_id}"
+  mkdir -p "$out_dir"
+  local -r out="$out_dir/realm-export.json"
+
+  python3 - "$out" <<PYEOF
+import json, sys
+realm = {
+  "realm": "prividium",
+  "enabled": True,
+  "loginWithEmailAllowed": True,
+  "resetPasswordAllowed": True,
+  "bruteForceProtected": True,
+  "accessTokenLifespan": 3600,
+  "clients": [{
+    "clientId": "prividium-client",
+    "enabled": True,
+    "publicClient": True,
+    "standardFlowEnabled": True,
+    "implicitFlowEnabled": False,
+    "directAccessGrantsEnabled": True,
+    "redirectUris": [
+      "http://localhost:${p_admin}/*",
+      "http://localhost:${p_user}/*",
+      "http://localhost:${p_explorer_api}/*",
+      "http://localhost:${p_explorer_app}/*",
+      "http://localhost:${p_keycloak}/*",
+      "http://localhost:4000/*",
+      "http://localhost:5173/*"
+    ],
+    "webOrigins": ["+"],
+    "attributes": {"pkce.code.challenge.method": "S256"},
+    "protocolMappers": [
+      {
+        "name": "email", "protocol": "openid-connect",
+        "protocolMapper": "oidc-usermodel-property-mapper",
+        "config": {
+          "user.attribute": "email", "claim.name": "email",
+          "jsonType.label": "String",
+          "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true"
+        }
+      },
+      {
+        "name": "preferred_username", "protocol": "openid-connect",
+        "protocolMapper": "oidc-usermodel-property-mapper",
+        "config": {
+          "user.attribute": "username", "claim.name": "preferred_username",
+          "jsonType.label": "String",
+          "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true"
+        }
+      }
+    ]
+  }],
+  "roles": {
+    "realm": [{"name": "admin", "composite": False}, {"name": "user", "composite": False}]
+  },
+  "users": [
+    {
+      "username": "admin@local.dev", "email": "admin@local.dev", "enabled": True,
+      "credentials": [{"type": "password", "value": "password", "temporary": False}],
+      "realmRoles": ["admin", "user"]
+    },
+    {
+      "username": "user@local.dev", "email": "user@local.dev", "enabled": True,
+      "credentials": [{"type": "password", "value": "password", "temporary": False}],
+      "realmRoles": ["user"]
+    },
+    {
+      "username": "test@local.dev", "email": "test@local.dev", "enabled": True,
+      "credentials": [{"type": "password", "value": "password", "temporary": False}],
+      "realmRoles": ["user"]
+    }
+  ]
+}
+with open(sys.argv[1], "w") as f:
+    json.dump(realm, f, indent=2)
+PYEOF
+  log "Generated $out  (keycloak realm, chain_id=$chain_id)"
+}
+
 # ── block-explorer config.js ──────────────────────────────────────────────────
 generate_explorer_config() {
   local -r chain_id="$1"
@@ -285,7 +374,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ${rel_configs}/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ${rel_configs}/keycloak/${chain_id}/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
       test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/8080']
       interval: 10s
@@ -555,6 +644,13 @@ main() {
     local chain_id=$(( BASE_CHAIN_ID + i ))
     local cfg_subdir="$configs_abs/${chain_id}"
     local offset=$(( (i - 1) * PORT_STRIDE ))
+    generate_keycloak_realm \
+      "$chain_id" \
+      "$(( 3000 + offset ))" \
+      "$(( 3001 + offset ))" \
+      "$(( 3002 + offset ))" \
+      "$(( 3010 + offset ))" \
+      "$(( 5080 + offset ))"
     generate_explorer_config \
       "$chain_id" \
       "$(( 3002 + offset ))" \

@@ -30,8 +30,6 @@ readonly PORT_STRIDE=200
 # Chains 1-4 have pre-configured keys + L1 state; chains 5+ require genesis generation.
 readonly PREBUILT_MAX=4
 
-# Upstream URL for the keycloak realm configuration
-readonly KEYCLOAK_REALM_URL="https://raw.githubusercontent.com/matter-labs/local-prividium/main/dev/keycloak/realm-export.json"
 
 # ── colours ───────────────────────────────────────────────────────────────────
 readonly RED='\033[0;31m'
@@ -155,24 +153,6 @@ ensure_genesis_json() {
   log "Extracted genesis.json → $dest"
 }
 
-# ── step: download keycloak realm ─────────────────────────────────────────────
-download_keycloak_realm() {
-  local -r dest="$1"
-  mkdir -p "$(dirname "$dest")"
-  info "Downloading Keycloak realm config from local-prividium..."
-
-  if cmd_exists curl; then
-    curl -fsSL "$KEYCLOAK_REALM_URL" -o "$dest" \
-      || die "Failed to download keycloak realm from $KEYCLOAK_REALM_URL"
-  elif cmd_exists wget; then
-    wget -qO "$dest" "$KEYCLOAK_REALM_URL" \
-      || die "Failed to download keycloak realm from $KEYCLOAK_REALM_URL"
-  else
-    die "Neither curl nor wget found. Install one to proceed."
-  fi
-
-  log "Downloaded realm-export.json → $dest"
-}
 
 # ── step: generate compose files ─────────────────────────────────────────────
 generate_compose_files() {
@@ -259,7 +239,6 @@ main() {
     mv "$dev_dir/chain_${chain_id}.yaml" "$dev_dir/$chain_id/"
   done
   ensure_genesis_json "$dev_dir/l1/genesis.json"
-  download_keycloak_realm "$dev_dir/keycloak/realm-export.json"
   generate_compose_files "$out_dir" "$dev_dir"
 
   echo ""

@@ -243,9 +243,9 @@ main() {
   parse_args "$@"
 
   local -r configs_dir="$SCRIPT_DIR/configs/$version"
-  local -r compose_dir="$(realpath "$output_dir")"
 
-  mkdir -p "$configs_dir" "$compose_dir"
+  mkdir -p "$configs_dir" "$output_dir"
+  local -r compose_dir="$(realpath "$output_dir")"
 
   log "Configuring $count Prividium instance(s) for ZKsync OS $version"
   echo ""

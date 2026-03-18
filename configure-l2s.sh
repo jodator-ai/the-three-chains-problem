@@ -301,9 +301,9 @@ main() {
 
   local -r prebuilt_max="$( [[ "$version" == "v31.0" ]] && echo "$PREBUILT_MAX_V310" || echo "$PREBUILT_MAX_V302" )"
   local -r configs_dir="$SCRIPT_DIR/configs/$version"
-  local -r compose_dir="$(realpath "$output_dir")"
 
-  mkdir -p "$configs_dir" "$compose_dir"
+  mkdir -p "$configs_dir" "$output_dir"
+  local -r compose_dir="$(realpath "$output_dir")"
 
   local mode_label="$version, L1 settlement"
   [[ "$gateway" == true ]] && mode_label="$version, gateway mode"

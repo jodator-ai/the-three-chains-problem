@@ -34,7 +34,7 @@ services:
     environment:
       - PORT=8000
       - METRICS_PORT=9091
-      - SEQUENCER_RPC_URL=http://zksyncos-6567:3050
+      - SEQUENCER_RPC_URL=http://zksyncos-6567:3052
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/prividium_api_6567
       - CORS_ORIGIN=http://localhost:3400,http://localhost:3401,http://localhost:3402
       - AUTH_METHODS=oidc,crypto_native

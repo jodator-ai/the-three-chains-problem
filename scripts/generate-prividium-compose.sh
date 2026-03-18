@@ -13,7 +13,7 @@
 # (shared L1/postgres are deduplicated automatically by Docker Compose).
 #
 # Port layout per instance N (1-indexed), offset = (N-1)*200:
-#   zksyncos RPC  : 5050 + offset  (external)  →  3050 (internal)
+#   zksyncos RPC  : 5050 + offset  (external)  →  3049 + N (internal, matches chain config)
 #   admin-panel   : 3000 + offset
 #   user-panel    : 3001 + offset
 #   prividium-api : 8000 + offset
@@ -356,6 +356,8 @@ generate_prividium_deps() {
   local -r p_explorer_app=$(( 3010 + offset ))
   local -r p_explorer_api=$(( 3002 + offset ))
   local -r p_data_fetcher=$(( 3040 + offset ))
+  # Internal port must match what generate-chain-configs.sh writes: 3049 + chain_num
+  local -r zksyncos_int_port=$(( 3049 + instance_num ))
 
   local -r s="${chain_id}"
   local -r kc_host="http://localhost:${p_keycloak}"
@@ -381,7 +383,7 @@ services:
     image: $server_image
     platform: linux/amd64
     ports:
-      - '${p_zksyncos}:3050'
+      - '${p_zksyncos}:${zksyncos_int_port}'
     environment:
       GENERAL_L1_RPC_URL: 'http://l1:5010'
     user: 'root'
@@ -396,7 +398,7 @@ services:
       l1:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', '/usr/bin/bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/3050']
+      test: ['CMD', '/usr/bin/bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/${zksyncos_int_port}']
       interval: 10s
       timeout: 5s
       retries: 12
@@ -466,7 +468,7 @@ services:
       - 'host.docker.internal:host-gateway'
     environment:
       NETWORK_NAME: testnet
-      BLOCKCHAIN_RPC_URL: http://zksyncos-${s}:3050
+      BLOCKCHAIN_RPC_URL: http://zksyncos-${s}:${zksyncos_int_port}
       PRIVIDIUM: 'true'
       PRIVIDIUM_PERMISSIONS_API_URL: http://host.docker.internal:${p_api}/api
     ports:
@@ -484,7 +486,7 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_ENABLE_SSL: 'false'
       NETWORK_NAME: testnet
-      BLOCKCHAIN_RPC_URL: http://zksyncos-${s}:3050
+      BLOCKCHAIN_RPC_URL: http://zksyncos-${s}:${zksyncos_int_port}
       DATA_FETCHER_URL: http://block-explorer-data-fetcher-${s}:3040
       PRIVIDIUM: 'true'
       PRIVIDIUM_PERMISSIONS_API_URL: http://host.docker.internal:${p_api}/api
@@ -521,6 +523,7 @@ generate_prividium_main() {
   local -r offset=$(( (instance_num - 1) * PORT_STRIDE ))
 
   local -r p_zksyncos=$(( 5050 + offset ))
+  local -r zksyncos_int_port=$(( 3049 + instance_num ))
   local -r p_admin=$(( 3000 + offset ))
   local -r p_user=$(( 3001 + offset ))
   local -r p_api=$(( 8000 + offset ))
@@ -571,7 +574,7 @@ services:
     environment:
       - PORT=8000
       - METRICS_PORT=9091
-      - SEQUENCER_RPC_URL=http://zksyncos-${s}:3050
+      - SEQUENCER_RPC_URL=http://zksyncos-${s}:${zksyncos_int_port}
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/prividium_api_${chain_id}
       - CORS_ORIGIN=http://localhost:${p_admin},http://localhost:${p_user},http://localhost:${p_explorer_api}
       - AUTH_METHODS=oidc,crypto_native

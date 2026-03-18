@@ -14,7 +14,7 @@ services:
     image: ghcr.io/matter-labs/zksync-os-server:latest
     platform: linux/amd64
     ports:
-      - '5450:3050'
+      - '5450:3052'
     environment:
       GENERAL_L1_RPC_URL: 'http://l1:5010'
     user: 'root'
@@ -29,7 +29,7 @@ services:
       l1:
         condition: service_healthy
     healthcheck:
-      test: ['CMD', '/usr/bin/bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/3050']
+      test: ['CMD', '/usr/bin/bash', '-c', 'exec 3<>/dev/tcp/127.0.0.1/3052']
       interval: 10s
       timeout: 5s
       retries: 12
@@ -99,7 +99,7 @@ services:
       - 'host.docker.internal:host-gateway'
     environment:
       NETWORK_NAME: testnet
-      BLOCKCHAIN_RPC_URL: http://zksyncos-6567:3050
+      BLOCKCHAIN_RPC_URL: http://zksyncos-6567:3052
       PRIVIDIUM: 'true'
       PRIVIDIUM_PERMISSIONS_API_URL: http://host.docker.internal:8400/api
     ports:
@@ -117,7 +117,7 @@ services:
       DATABASE_PASSWORD: postgres
       DATABASE_ENABLE_SSL: 'false'
       NETWORK_NAME: testnet
-      BLOCKCHAIN_RPC_URL: http://zksyncos-6567:3050
+      BLOCKCHAIN_RPC_URL: http://zksyncos-6567:3052
       DATA_FETCHER_URL: http://block-explorer-data-fetcher-6567:3040
       PRIVIDIUM: 'true'
       PRIVIDIUM_PERMISSIONS_API_URL: http://host.docker.internal:8400/api

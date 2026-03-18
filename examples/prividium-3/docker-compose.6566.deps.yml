@@ -23,7 +23,7 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_6566.yaml']
     volumes:
       - zksyncos_6566_db:/db
-      - ./dev/6566/chain_6566.yaml:/configs/chain_6566.yaml:ro
+      - ./dev/prividium-2/zksyncos/chain_6566.yaml:/configs/chain_6566.yaml:ro
       - ./dev/l1/genesis.json:/app/local-chains/v30.2/genesis.json:ro
     depends_on:
       l1:
@@ -54,7 +54,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ./dev/keycloak/6566/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ./dev/prividium-2/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
       test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/8080']
       interval: 10s
@@ -134,7 +134,7 @@ services:
     image: ghcr.io/matter-labs/block-explorer-app:latest
     platform: linux/amd64
     volumes:
-      - ./dev/6566/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
+      - ./dev/prividium-2/block-explorer/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
     ports:
       - '3210:3010'
     depends_on:

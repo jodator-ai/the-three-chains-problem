@@ -231,12 +231,12 @@ main() {
 
   copy_l1_state "$dev_dir/l1/l1-state.json.gz"
   generate_chain_configs "$dev_dir"
-  # Move each chain config into its own per-chain subdir
+  # Move each chain config into its per-instance zksyncos subdir
   local i chain_id
   for i in $(seq 1 "$count"); do
     chain_id=$(( BASE_CHAIN_ID + i ))
-    mkdir -p "$dev_dir/$chain_id"
-    mv "$dev_dir/chain_${chain_id}.yaml" "$dev_dir/$chain_id/"
+    mkdir -p "$dev_dir/prividium-$i/zksyncos"
+    mv "$dev_dir/chain_${chain_id}.yaml" "$dev_dir/prividium-$i/zksyncos/"
   done
   ensure_genesis_json "$dev_dir/l1/genesis.json"
   generate_compose_files "$out_dir" "$dev_dir"

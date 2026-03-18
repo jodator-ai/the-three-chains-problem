@@ -112,11 +112,41 @@ All instances share a single L1 (Anvil).
 ```bash
 ./configure-prividiums.sh --count=3
 
+# Each top-level compose file pulls in its full stack via include:
 docker compose \
   -f out/docker-compose.6565.yml \
   -f out/docker-compose.6566.yml \
   -f out/docker-compose.6567.yml \
   up -d
+
+# Or use the generated helper:
+cd out && ./start.sh
+```
+
+### Output Layout
+
+```
+out/
+├── docker-compose.l1.yml           # Shared Anvil L1 + postgres
+├── docker-compose.<id>.deps.yml    # zksyncos, keycloak, block-explorer (per instance)
+├── docker-compose.<id>.yml         # prividium-api, admin panel, user panel (per instance)
+├── start.sh                        # Thin wrapper: ./start.sh [up -d | down | logs -f]
+└── dev/
+    ├── l1/
+    │   ├── l1-state.json.gz
+    │   └── genesis.json
+    ├── prividium-1/
+    │   ├── zksyncos/
+    │   │   └── chain_6565.yaml
+    │   ├── keycloak/
+    │   │   └── realm-export.json   # per-instance, ports match this chain only
+    │   └── block-explorer/
+    │       └── block-explorer-config.js
+    ├── prividium-2/
+    │   ├── zksyncos/chain_6566.yaml
+    │   ├── keycloak/realm-export.json
+    │   └── block-explorer/block-explorer-config.js
+    └── prividium-N/ …
 ```
 
 ### Port Layout (stride: 200 per instance)
@@ -162,7 +192,7 @@ Pre-generated output in `examples/`:
 | `examples/prividium-3/` | `./configure-prividiums.sh --count=3 --output=examples/prividium-3` | 3 full Prividium stacks (shared postgres) |
 
 Each example is self-contained: all compose files, chain configs, genesis, and L1 state
-are in the same directory. Volume paths in compose files are relative (`./chain_XXXX.yaml`, etc.).
+are in the same directory. Volume paths in compose files are relative to the output directory.
 
 ---
 

@@ -181,14 +181,15 @@ EOF
 # ── per-instance keycloak realm config ───────────────────────────────────────
 # Generated (not downloaded) so redirect URIs match each instance's actual ports.
 generate_keycloak_realm() {
-  local -r chain_id="$1"
-  local -r p_admin="$2"
-  local -r p_user="$3"
-  local -r p_explorer_api="$4"
-  local -r p_explorer_app="$5"
-  local -r p_keycloak="$6"
+  local -r instance_num="$1"
+  local -r chain_id="$2"
+  local -r p_admin="$3"
+  local -r p_user="$4"
+  local -r p_explorer_api="$5"
+  local -r p_explorer_app="$6"
+  local -r p_keycloak="$7"
 
-  local -r out_dir="$configs_abs/keycloak/${chain_id}"
+  local -r out_dir="$configs_abs/prividium-${instance_num}/keycloak"
   mkdir -p "$out_dir"
   local -r out="$out_dir/realm-export.json"
 
@@ -269,12 +270,13 @@ PYEOF
 
 # ── block-explorer config.js ──────────────────────────────────────────────────
 generate_explorer_config() {
-  local -r chain_id="$1"
-  local -r api_port="$2"
-  local -r explorer_app_port="$3"
-  local -r user_panel_port="$4"
-  local -r out_dir="$5"
+  local -r instance_num="$1"
+  local -r chain_id="$2"
+  local -r api_port="$3"
+  local -r explorer_app_port="$4"
+  local -r user_panel_port="$5"
 
+  local -r out_dir="$configs_abs/prividium-${instance_num}/block-explorer"
   mkdir -p "$out_dir"
   cat > "$out_dir/block-explorer-config.js" <<EOF
 window['##runtimeConfig'] = {
@@ -312,8 +314,7 @@ generate_prividium_deps() {
   local -r s="${chain_id}"
   local -r kc_host="http://localhost:${p_keycloak}"
 
-  local -r cfg_subdir="$configs_abs/${chain_id}"
-  local -r rel_cfg_subdir="${rel_configs}/${chain_id}"
+  local -r rel_inst="${rel_configs}/prividium-${instance_num}"
 
   local -r out="$output_dir/docker-compose.${chain_id}.deps.yml"
 
@@ -343,7 +344,7 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${chain_id}.yaml']
     volumes:
       - zksyncos_${s}_db:/db
-      - ${rel_configs}/${chain_id}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
+      - ${rel_inst}/zksyncos/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
       - ${rel_configs}/l1/genesis.json:/app/local-chains/${version}/genesis.json:ro
     depends_on:
       l1:
@@ -374,7 +375,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ${rel_configs}/keycloak/${chain_id}/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ${rel_inst}/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
       test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/8080']
       interval: 10s
@@ -454,7 +455,7 @@ services:
     image: ghcr.io/matter-labs/block-explorer-app:latest
     platform: linux/amd64
     volumes:
-      - ${rel_cfg_subdir}/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
+      - ${rel_inst}/block-explorer/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
     ports:
       - '${p_explorer_app}:3010'
     depends_on:
@@ -642,21 +643,19 @@ main() {
   local i
   for i in $(seq 1 "$count"); do
     local chain_id=$(( BASE_CHAIN_ID + i ))
-    local cfg_subdir="$configs_abs/${chain_id}"
     local offset=$(( (i - 1) * PORT_STRIDE ))
     generate_keycloak_realm \
-      "$chain_id" \
+      "$i" "$chain_id" \
       "$(( 3000 + offset ))" \
       "$(( 3001 + offset ))" \
       "$(( 3002 + offset ))" \
       "$(( 3010 + offset ))" \
       "$(( 5080 + offset ))"
     generate_explorer_config \
-      "$chain_id" \
+      "$i" "$chain_id" \
       "$(( 3002 + offset ))" \
       "$(( 3010 + offset ))" \
-      "$(( 3001 + offset ))" \
-      "$cfg_subdir"
+      "$(( 3001 + offset ))"
     generate_prividium_deps "$i"
     generate_prividium_main "$i"
   done

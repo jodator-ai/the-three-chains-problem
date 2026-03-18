@@ -268,7 +268,9 @@ main() {
     generate_l2_config "$i"
   done
 
-  log "Done. $count L2 chain config(s)${gateway:+ + gateway chain} written to: $output_dir"
+  local extra=""
+  [[ "$gateway" == true ]] && extra=" + gateway chain"
+  log "Done. $count L2 chain config(s)${extra} written to: $output_dir"
 }
 
 main

@@ -212,7 +212,7 @@ services:
     image: ghcr.io/matter-labs/block-explorer-app:latest
     platform: linux/amd64
     volumes:
-      - prividium-6565/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
+      - ./prividium-6565/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
     ports:
       - '3010:3010'
     depends_on:

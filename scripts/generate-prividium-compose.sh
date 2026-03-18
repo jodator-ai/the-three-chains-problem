@@ -94,7 +94,7 @@ mkdir -p "$output_dir"
 # Uses Python for portability (macOS realpath lacks --relative-to).
 output_abs="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$output_dir")"
 configs_abs="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$configs_dir")"
-rel_configs="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$configs_abs" "$output_abs")"
+rel_configs="$(python3 -c "import os,sys; p=os.path.relpath(sys.argv[1], sys.argv[2]); print(p if p.startswith('.') else './'+p)" "$configs_abs" "$output_abs")"
 
 # ── postgres init SQL (creates per-instance databases) ────────────────────────
 build_postgres_init_sql() {
@@ -229,7 +229,8 @@ generate_prividium() {
   generate_explorer_config \
     "$chain_id" "$p_explorer_api" "$p_explorer_app" "$p_user" "$cfg_subdir"
 
-  local -r rel_cfg_subdir="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$cfg_subdir" "$output_abs")"
+  local rel_cfg_subdir
+  rel_cfg_subdir="$(python3 -c "import os,sys; p=os.path.relpath(sys.argv[1], sys.argv[2]); print(p if p.startswith('.') else './'+p)" "$cfg_subdir" "$output_abs")"
   local -r out="$output_dir/docker-compose.prividium-${chain_id}.yml"
 
   cat > "$out" <<EOF

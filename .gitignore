@@ -3,6 +3,9 @@ docker-compose.generated.yml
 
 # Downloaded/generated chain configs (populated by configure-l2s)
 configs/v30.2/chain_*.yaml
+# But track manually crafted configs for chains 3+
+!configs/v30.2/chain_6567.yaml
+!configs/v30.2/chain_6568.yaml
 configs/v30.2/wallets_*.yaml
 configs/v30.2/contracts_*.yaml
 configs/v30.2/genesis.json

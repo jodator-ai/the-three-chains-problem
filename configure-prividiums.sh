@@ -163,10 +163,10 @@ download_bundler_contracts() {
     "package.json"
     "pnpm-lock.yaml"
     "scripts/bridge-funds.ts"
+    "entrypoint/.gitignore"
     "entrypoint/foundry.toml"
     "entrypoint/soldeer.lock"
     "entrypoint/script/deploy.sh"
-    "entrypoint/script/DeployEntryPoint.s.sol"
   )
 
   for f in "${files[@]}"; do

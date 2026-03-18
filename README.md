@@ -1,218 +1,231 @@
 # The Three Chains Problem
 
-A toolkit for running **multiple ZKsync OS L2 chains** against a single local L1 (Anvil).
+A toolkit for running **multiple ZKsync OS L2 chains** (or full **Prividium** stacks) against a
+single local L1 (Anvil) — all from a single command.
 
 Built on top of [local-prividium](https://github.com/matter-labs/local-prividium) and
 [zksync-os-scripts](https://github.com/matter-labs/zksync-os-scripts).
 
-## Quick Start
+## Commands
 
-### Prerequisites
+| Command | Description |
+|---|---|
+| `./configure-l2s.sh --count=N` | N bare ZKsync OS L2 sequencers sharing one L1 |
+| `./configure-prividiums.sh --count=N` | N full Prividium stacks sharing one L1 |
 
-- Docker and Docker Compose v2+
-- `curl` or `wget`
-- (optional) `gh` CLI for downloading LFS files
+Both commands generate composable docker-compose files — one file per service instance, one
+shared L1 file — that you merge with `docker compose -f … -f … up`.
 
-### Two chains (pre-built, fastest)
+---
 
-```bash
-./configure-l2s --count=2
-docker compose -f docker-compose.generated.yml up -d
-```
+## configure-l2s.sh — Multiple L2 Chains
 
-### Three or more chains
-
-Chains 3+ require generating new L1 contract deployments. Use the Docker-based
-genesis generator (no local toolchain required):
+### Quick Start
 
 ```bash
-# First, generate genesis for the additional chain(s)
-./scripts/generate-genesis.sh --docker --count=3
+# Generate compose files for 4 chains
+./configure-l2s.sh --count=4
 
-# Then configure and start
-./configure-l2s --count=3
-docker compose -f docker-compose.generated.yml up -d
+# Start (use the printed docker compose command, or build it yourself):
+docker compose \
+  -f generated/docker-compose.l1.yml \
+  -f generated/docker-compose.zksyncos-6565.yml \
+  -f generated/docker-compose.zksyncos-6566.yml \
+  -f generated/docker-compose.zksyncos-6567.yml \
+  -f generated/docker-compose.zksyncos-6568.yml \
+  up -d
 ```
 
-## How It Works
+### Chain IDs and Ports
 
-```
-configure-l2s --count=N
-       │
-       ├── chains 1-2: download pre-built configs from upstream
-       │   (zksync-os-server/local-chains/v30.2/multi_chain/)
-       │
-       ├── chains 3+:  generate-genesis.sh (uses Docker or local tools)
-       │   └── runs forked zksync-os-scripts/genesis/generate_chains.py
-       │       ├── builds zkstack CLI
-       │       ├── deploys L1 contracts (bridgehub, bytecode supplier)
-       │       ├── generates chain_XXXX.yaml per chain
-       │       └── dumps l1-state.json.gz (Anvil state with all contracts)
-       │
-       └── generate-compose.sh → docker-compose.generated.yml
-```
-
-## Chain IDs and Ports
-
-| Chain # | Chain ID | Internal Port | External Port |
-|---------|----------|---------------|---------------|
-| 1       | 6565     | 3050          | 5050          |
-| 2       | 6566     | 3051          | 5051          |
-| 3       | 6567     | 3052          | 5052          |
-| 4       | 6568     | 3053          | 5053          |
-| N       | 6564+N   | 3049+N        | 5049+N        |
+| Chain # | Chain ID | RPC (host) |
+|---------|----------|-----------|
+| 1       | 6565     | :5050     |
+| 2       | 6566     | :5051     |
+| 3       | 6567     | :5052     |
+| 4       | 6568     | :5053     |
+| N       | 6564+N   | :5049+N   |
 
 **L1 (Anvil):** `http://localhost:5010` (chain ID: 31337)
 
-## Usage Examples
+Chains 1–4 are pre-configured (keys embedded, L1 state in repo). Chains 5–8 require genesis
+generation first — see [Genesis Generation](#genesis-generation-for-5-chains).
 
-```bash
-# Two chains (uses pre-built genesis state)
-./configure-l2s --count=2
-
-# Three chains
-./configure-l2s --count=3
-
-# Four chains, custom output file
-./configure-l2s --count=4 --output=four-chains.yml
-
-# Force regenerate all configs
-./configure-l2s --count=3 --force-genesis
-
-# Custom server image
-./configure-l2s --count=2 --server-image=ghcr.io/matter-labs/zksync-os-server:v0.12.0
-```
-
-## configure-l2s Options
+### Options
 
 ```
-./configure-l2s --count=N [options]
+./configure-l2s.sh --count=N [options]
 
-Options:
-  --count=N           Number of L2 chains (1-8)
-  --output=FILE       Output file (default: docker-compose.generated.yml)
-  --force-genesis     Regenerate configs even if they exist
+  --count=N           Number of L2 chains (1–4 pre-configured; 5–8 require genesis)
+  --output-dir=DIR    Output directory (default: ./generated)
+  --force-genesis     Re-extract genesis.json from image
   --version=VER       Protocol version (default: v30.2)
   --server-image=IMG  zksync-os-server image (default: latest)
 ```
 
-## Docker Compose Commands
+### How It Works
 
-```bash
-# Start all chains
-docker compose -f docker-compose.generated.yml up -d
-
-# View logs for all chains
-docker compose -f docker-compose.generated.yml logs -f
-
-# View logs for a specific chain
-docker compose -f docker-compose.generated.yml logs -f chain-6565
-
-# Stop all chains (keeps data volumes)
-docker compose -f docker-compose.generated.yml down
-
-# Stop and remove all data (fresh restart)
-docker compose -f docker-compose.generated.yml down -v
+```
+configure-l2s.sh --count=N
+       │
+       ├── scripts/generate-chain-configs.sh
+       │   └── writes configs/v30.2/chain_XXXX.yaml (embedded operator keys)
+       │
+       ├── extracts genesis.json from zksync-os-server image
+       │
+       └── scripts/generate-compose.sh
+           ├── generated/docker-compose.l1.yml
+           └── generated/docker-compose.zksyncos-XXXX.yml  (one per chain)
 ```
 
-## Genesis Generation for 3+ Chains
+### Docker Compose Commands
+
+```bash
+# One-chain example — adapt -f list for your count
+COMPOSE="docker compose -f generated/docker-compose.l1.yml -f generated/docker-compose.zksyncos-6565.yml"
+
+$COMPOSE up -d        # start
+$COMPOSE logs -f      # stream logs
+$COMPOSE ps           # check health
+$COMPOSE down         # stop (keep volumes)
+$COMPOSE down -v      # stop + wipe volumes
+```
+
+---
+
+## configure-prividiums.sh — Multiple Prividium Instances
+
+Each instance is a complete [Prividium](https://github.com/matter-labs/local-prividium) stack:
+zksyncos sequencer, postgres, keycloak, prividium-api, admin panel, user panel, and block explorer.
+All instances share a single L1 (Anvil).
+
+> **Requires quay.io access** for enterprise Prividium images.
+> Run `docker login quay.io` first.
+
+### Quick Start
+
+```bash
+# Generate compose files for 2 Prividium instances
+./configure-prividiums.sh --count=2
+
+# Start:
+docker compose \
+  -f generated-prividiums/docker-compose.l1.yml \
+  -f generated-prividiums/docker-compose.prividium-6565.yml \
+  -f generated-prividiums/docker-compose.prividium-6566.yml \
+  up -d
+```
+
+### Port Layout (stride: 200 per instance)
+
+| Service        | Instance 1 | Instance 2 | Instance N |
+|----------------|-----------|-----------|------------|
+| Admin Panel    | 3000      | 3200      | 3000+(N-1)×200 |
+| User Panel     | 3001      | 3201      | 3001+(N-1)×200 |
+| Prividium API  | 8000      | 8200      | 8000+(N-1)×200 |
+| Block Explorer | 3010      | 3210      | 3010+(N-1)×200 |
+| zkSync RPC     | 5050      | 5250      | 5050+(N-1)×200 |
+| Keycloak       | 5080      | 5280      | 5080+(N-1)×200 |
+| Postgres       | 5432      | 5632      | 5432+(N-1)×200 |
+
+**L1 (Anvil):** `http://localhost:5010` (shared by all instances)
+
+Instance 1 uses the same default ports as upstream
+[local-prividium](https://github.com/matter-labs/local-prividium).
+
+### Options
+
+```
+./configure-prividiums.sh --count=N [options]
+
+  --count=N                Number of Prividium instances (1–4)
+  --output-dir=DIR         Output directory (default: ./generated-prividiums)
+  --force-refresh          Re-download keycloak realm + re-extract genesis.json
+  --version=VER            Protocol version (default: v30.2)
+  --server-image=IMG       zksync-os-server image (default: latest)
+  --prividium-version=V    Prividium image tag (default: v1.153.1)
+```
+
+### How It Works
+
+```
+configure-prividiums.sh --count=N
+       │
+       ├── scripts/generate-chain-configs.sh
+       │   └── writes configs/v30.2/chain_XXXX.yaml (embedded operator keys)
+       │
+       ├── extracts genesis.json from zksync-os-server image
+       │
+       ├── downloads configs/v30.2/keycloak-realm.json from local-prividium
+       │
+       └── scripts/generate-prividium-compose.sh
+           ├── generated-prividiums/docker-compose.l1.yml
+           └── generated-prividiums/docker-compose.prividium-XXXX.yml  (one per instance)
+               └── services: postgres, keycloak, zksyncos, prividium-api,
+                              admin-panel, user-panel, block-explorer stack
+```
+
+---
+
+## Genesis Generation for 5+ Chains
+
+Chains 1–4 have pre-built genesis state (L1 contracts pre-deployed in `configs/v30.2/l1-state.json.gz`).
+Chains 5–8 require deploying new L1 contracts:
 
 ### Option A: Docker (recommended, no local tools needed)
 
 ```bash
-# Generate genesis for 3 chains (6565, 6566, 6567)
-./scripts/generate-genesis.sh --docker --count=3
+# Generate genesis for 5 chains (~30min first run, cached after)
+./scripts/generate-genesis.sh --docker --count=5
 
-# Or specify exact chain IDs
-./scripts/generate-genesis.sh --docker --chains 6565,6566,6567,6568
+# Then configure as usual
+./configure-l2s.sh --count=5
 ```
-
-The Docker image (~2-4 GB) installs all required tools and pre-compiles dependencies.
-**First build takes 20-40 minutes.** Subsequent runs reuse the cached image.
 
 ### Option B: Local (fastest if tools already installed)
 
-Required tools:
-- Rust ≥ 1.89 (`rustup update`)
-- yarn ≥ 1.22
-- Foundry 1.3.5 (`foundryup --version 1.3.5`)
-- cargo, cast, forge, anvil
+Required tools: Rust ≥ 1.89, yarn ≥ 1.22, Foundry 1.3.5
 
-Required environment variables:
 ```bash
 export ERA_CONTRACTS_PATH=/path/to/era-contracts   # tag: zkos-v0.30.2
 export ZKSYNC_ERA_PATH=/path/to/zksync-era         # tag: protocol-upgrade-v1.3.1
 export PROTOCOL_VERSION=v30.2
+
+./scripts/generate-genesis.sh --count=5
+./configure-l2s.sh --count=5
 ```
 
-Clone the required repos:
-```bash
-git clone --branch zkos-v0.30.2 https://github.com/matter-labs/era-contracts
-git clone --branch protocol-upgrade-v1.3.1 https://github.com/matter-labs/zksync-era
-```
+---
 
-Run genesis generation:
-```bash
-./scripts/generate-genesis.sh --count=3
-```
-
-## Genesis Generation Script (Fork)
-
-The `genesis/generate_chains.py` script is adapted from
-[`zksync-os-scripts/scripts/update_server.py`](https://github.com/matter-labs/zksync-os-scripts/blob/main/scripts/update_server.py).
-
-**Key differences from upstream:**
-- Accepts `--chain-ids` parameter instead of hardcoded `[6565, 6566]`
-- Standalone Python file (no dependency on the `lib/` package from zksync-os-scripts)
-- Generates only chain configs and L1 state (no VK hash updates, no factory deps)
-- Assigns RPC ports sequentially: 3050, 3051, 3052, ...
-
-The upstream `update_server.py` also handles verification key hashes and factory
-dependencies for the full zksync-os-server build. For local development (where
-`general.ephemeral: true` in chain configs), these are not needed.
-
-## Directory Structure
+## Repository Structure
 
 ```
 the-three-chains-problem/
-├── configure-l2s              # Main script: generate configs + compose file
+├── configure-l2s.sh              # Generate N bare L2 chains
+├── configure-prividiums.sh       # Generate N full Prividium stacks
 ├── scripts/
-│   ├── generate-compose.sh    # Generates docker-compose.generated.yml
-│   ├── generate-genesis.sh    # Runs genesis generation for N chains
-│   └── download-upstream-configs.sh  # Downloads pre-built configs for chains 1-2
+│   ├── generate-chain-configs.sh # Writes chain_XXXX.yaml (embedded keys)
+│   ├── generate-compose.sh       # Generates zksyncos compose files
+│   ├── generate-prividium-compose.sh  # Generates prividium compose files
+│   └── generate-genesis.sh       # Genesis generation for chains 5+
 ├── genesis/
-│   ├── Dockerfile             # Self-contained genesis generator image
-│   └── generate_chains.py     # Genesis generation script (fork of zksync-os-scripts)
+│   ├── Dockerfile                # Self-contained genesis generator image
+│   └── generate_chains.py        # Genesis generation script
 ├── configs/
-│   └── v30.2/                 # Auto-populated by configure-l2s
-│       ├── chain_6565.yaml    # Chain configs (downloaded or generated)
-│       ├── chain_6566.yaml
-│       ├── genesis.json       # zkSync OS genesis state
-│       └── l1-state.json.gz   # Anvil L1 state with deployed contracts
-└── docker-compose.generated.yml  # Auto-generated by configure-l2s
+│   └── v30.2/
+│       └── l1-state.json.gz      # Anvil L1 state (chains 1–4 pre-deployed)
+└── example/                      # Example output for 4 chains
+    ├── docker-compose.l1.yml
+    ├── docker-compose.zksyncos-6565.yml … 6568.yml
+    └── configs/
+        ├── chain_6565.yaml … 6568.yaml
+        └── genesis.json
 ```
 
-## Architecture
-
-Each L2 chain runs as a separate `zksync-os-server` process (Docker container).
-All chains share:
-- A single L1 (Anvil) node with all chain contracts pre-deployed
-- The same `genesis.json` (zkSync OS execution parameters)
-
-Each chain has its own:
-- Chain config YAML (`chain_XXXX.yaml`) with unique chain ID, operator keys, RPC port
-- Database volume (`chain_XXXX_db`)
-- L1 contract registration (deployed during genesis generation)
-
-### L1 State
-
-The `l1-state.json.gz` is an Anvil state snapshot containing:
-- zkStack ecosystem contracts (bridgehub, governance, verifier)
-- Per-chain: CTM registration, operator funding, initial deposit transactions
-
-For chains 1-2, this state is downloaded from the upstream
-[`zksync-os-server`](https://github.com/matter-labs/zksync-os-server) repository.
-For chains 3+, it is generated by `generate_chains.py` using `zkstack ecosystem init`.
+Generated files (gitignored):
+- `generated/` — output of `configure-l2s.sh`
+- `generated-prividiums/` — output of `configure-prividiums.sh`
+- `configs/v30.2/chain_*.yaml`, `genesis.json`, `keycloak-realm.json` — re-generated on each run
 
 ## Compatibility
 
@@ -220,6 +233,7 @@ For chains 3+, it is generated by `generate_chains.py` using `zkstack ecosystem 
 |------------------|----------------------------------|
 | zksync-os-server | latest (or `v0.12.0` for pinned) |
 | Protocol version | v30.2                            |
+| Prividium images | v1.153.1                         |
 | era-contracts    | `zkos-v0.30.2`                   |
 | zkstack-cli      | `protocol-upgrade-v1.3.1`        |
 | Foundry          | 1.3.5                            |
@@ -227,28 +241,23 @@ For chains 3+, it is generated by `generate_chains.py` using `zkstack ecosystem 
 
 ## Troubleshooting
 
-**Chain fails to start with "connection refused":**
-The chain server takes 20-30s to initialize. Check health:
+**Chain fails to start / connection refused:**
+The server takes 20–30s to initialize. Check health:
 ```bash
-docker compose -f docker-compose.generated.yml ps
+docker compose -f generated/docker-compose.l1.yml ... ps
 ```
 
-**L1 state download fails (LFS file):**
-Install the `gh` CLI for authenticated GitHub downloads:
+**Prividium image pull fails:**
+Login to quay.io:
 ```bash
-gh auth login
-./configure-l2s --count=2
-```
-
-**Genesis generation fails with "zkstack not found":**
-Ensure `ZKSYNC_ERA_PATH` points to a built zksync-era repo:
-```bash
-cargo build --release --bin zkstack
+docker login quay.io
 ```
 
 **Port conflicts:**
-The default ports (5050-5057, 5010) must be free. Check with:
+Check for conflicts with `lsof -i :5010` and `lsof -i :5050-5057`.
+Use `--output-dir` to run multiple isolated setups side by side.
+
+**Genesis generation fails with "zkstack not found":**
 ```bash
-lsof -i :5050-5058
-lsof -i :5010
+cargo build --release --bin zkstack
 ```

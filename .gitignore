@@ -1,11 +1,14 @@
-# Generated docker-compose files (written to ./generated/ by configure-l2s)
+# Generated docker-compose output dirs
 generated/
+generated-prividiums/
 
-# Generated chain configs (written to configs/ by configure-l2s)
+# Generated/downloaded configs (re-created on each run by configure-l2s.sh / configure-prividiums.sh)
 configs/v30.2/chain_*.yaml
 configs/v30.2/wallets_*.yaml
 configs/v30.2/contracts_*.yaml
 configs/v30.2/genesis.json
+configs/v30.2/keycloak-realm.json
+configs/v30.2/prividium-*/
 
 configs/v30.2/.workspace/
 

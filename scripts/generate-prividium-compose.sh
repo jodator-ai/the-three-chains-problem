@@ -91,9 +91,10 @@ is_integer "$count"    || die "--count must be a positive integer"
 mkdir -p "$output_dir"
 
 # Compute relative path from output_dir to configs_dir.
-output_abs="$(realpath "$output_dir")"
-configs_abs="$(realpath "$configs_dir")"
-rel_configs="$(realpath --relative-to="$output_abs" "$configs_abs")"
+# Uses Python for portability (macOS realpath lacks --relative-to).
+output_abs="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$output_dir")"
+configs_abs="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$configs_dir")"
+rel_configs="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$configs_abs" "$output_abs")"
 
 # ── postgres init SQL (creates per-instance databases) ────────────────────────
 build_postgres_init_sql() {
@@ -228,7 +229,7 @@ generate_prividium() {
   generate_explorer_config \
     "$chain_id" "$p_explorer_api" "$p_explorer_app" "$p_user" "$cfg_subdir"
 
-  local -r rel_cfg_subdir="$(realpath --relative-to="$output_abs" "$cfg_subdir")"
+  local -r rel_cfg_subdir="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$cfg_subdir" "$output_abs")"
   local -r out="$output_dir/docker-compose.prividium-${chain_id}.yml"
 
   cat > "$out" <<EOF

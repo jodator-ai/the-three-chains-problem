@@ -80,9 +80,10 @@ mkdir -p "$output_dir"
 
 # Compute relative path from output_dir to configs_dir.
 # Docker Compose resolves volume paths relative to the compose file's directory.
-output_abs="$(realpath "$output_dir")"
-configs_abs="$(realpath "$configs_dir")"
-rel_configs="$(realpath --relative-to="$output_abs" "$configs_abs")"
+# Uses Python for portability (macOS realpath lacks --relative-to).
+output_abs="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$output_dir")"
+configs_abs="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$configs_dir")"
+rel_configs="$(python3 -c "import os,sys; print(os.path.relpath(sys.argv[1], sys.argv[2]))" "$configs_abs" "$output_abs")"
 
 # ── l1 compose file ───────────────────────────────────────────────────────────
 generate_l1() {

@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# configure-l2s.sh — Generate composable Docker Compose files for N ZKsync OS L2 chains.
+# configure-l2s.sh — Generate a self-contained output directory for N ZKsync OS L2 chains.
+#
+# All generated files (chain configs, genesis, compose files) land in --output (default: ./out).
+# The directory is wiped and recreated on every run.
 #
 # Settlement modes:
 #   default (v30.2 or v31.0)   All chains settle directly to L1 (Anvil).
@@ -9,7 +12,7 @@
 # Usage:
 #   ./configure-l2s.sh --count=3
 #   ./configure-l2s.sh --count=2 --version=v31.0 --gateway
-#   ./configure-l2s.sh --count=4 --output-dir=./my-setup
+#   ./configure-l2s.sh --count=4 --output=./my-setup
 #
 # After running, execute the printed docker compose command to start the chains.
 
@@ -22,7 +25,7 @@ readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 readonly DEFAULT_VERSION="v30.2"
 readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:latest"
 readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.3.4"
-readonly DEFAULT_OUTPUT_DIR="./generated"
+readonly DEFAULT_OUTPUT="./out"
 readonly BASE_CHAIN_ID=6564
 readonly GATEWAY_CHAIN_ID=506
 readonly GATEWAY_EXTERNAL_PORT=5049
@@ -73,17 +76,20 @@ download_file() {
 # ── usage ─────────────────────────────────────────────────────────────────────
 usage() {
   cat <<EOF
-${BOLD}$SCRIPT_NAME${NC} — Generate composable Docker Compose files for multiple ZKsync OS L2 chains
+${BOLD}$SCRIPT_NAME${NC} — Generate a self-contained directory for multiple ZKsync OS L2 chains
+
+All files (chain configs, genesis, compose files) are written to --output.
+The output directory is wiped and recreated on every run.
 
 ${BOLD}Usage:${NC}
   $SCRIPT_NAME --count=N [options]
 
 ${BOLD}Options:${NC}
   --count=N           Number of L2 chains to configure
-  --output-dir=DIR    Directory to write generated compose files (default: $DEFAULT_OUTPUT_DIR)
+  --output=DIR        Output directory (default: $DEFAULT_OUTPUT)
   --version=VER       ZKsync OS protocol version: v30.2 | v31.0 (default: $DEFAULT_VERSION)
   --gateway           v31.0 only: run gateway chain (506); L2 chains settle to it
-  --force-genesis     Re-extract genesis.json (and gateway-db.tar.gz) from the server image
+  --force-genesis     Re-download/re-extract genesis.json (and gateway-db.tar.gz)
   --server-image=IMG  Docker image for zksync-os-server (default: latest)
   --help, -h          Show this help message
 
@@ -97,7 +103,7 @@ ${BOLD}Examples:${NC}
   $SCRIPT_NAME --count=2
   $SCRIPT_NAME --count=4                              # v30.2, 4 chains to L1
   $SCRIPT_NAME --count=2 --version=v31.0 --gateway   # v31.0, gateway mode
-  $SCRIPT_NAME --count=2 --output-dir=./my-setup
+  $SCRIPT_NAME --count=2 --output=./my-setup
 
 ${BOLD}Chain IDs and Ports:${NC}
   Gateway: ID=506,   RPC → http://localhost:$GATEWAY_EXTERNAL_PORT  (gateway mode only)
@@ -115,7 +121,7 @@ parse_args() {
   local -r _hint="Run $SCRIPT_NAME --help for usage."
 
   count=""
-  output_dir="$DEFAULT_OUTPUT_DIR"
+  output="$DEFAULT_OUTPUT"
   version="$DEFAULT_VERSION"
   gateway=false
   force_genesis=false
@@ -125,7 +131,7 @@ parse_args() {
   for arg in "$@"; do
     case "$arg" in
       --count=*)        count="${arg#*=}" ;;
-      --output-dir=*)   output_dir="${arg#*=}" ;;
+      --output=*)       output="${arg#*=}" ;;
       --version=*)      version="${arg#*=}" ;;
       --gateway)        gateway=true ;;
       --force-genesis)  force_genesis=true ;;
@@ -175,32 +181,39 @@ check_genesis_requirement() {
 
 # ── step: ensure l1-state.json.gz ────────────────────────────────────────────
 # v30.2: tracked in repo (custom L1 state with 4 chains registered via state surgery)
-# v31.0: downloaded from upstream on first run
+# v31.0: downloaded from upstream on first run; cached in configs/v31.0/
 ensure_l1_state() {
-  local -r l1_state="$1"
+  local -r dest="$1"
 
-  if file_exists "$l1_state"; then
-    info "l1-state.json.gz already present."
+  if [[ "$version" == "v30.2" ]]; then
+    local -r src="$SCRIPT_DIR/configs/v30.2/l1-state.json.gz"
+    file_exists "$src" \
+      || die "L1 state not found: $src — the v30.2 l1-state.json.gz must be present in the repo."
+    cp "$src" "$dest"
+    info "Copied l1-state.json.gz → $dest"
     return
   fi
 
-  if [[ "$version" == "v30.2" ]]; then
-    die "L1 state not found: $l1_state — the v30.2 l1-state.json.gz must be present in the repo."
+  # v31.0: cache in configs/v31.0/, then copy to output
+  local -r cache="$SCRIPT_DIR/configs/v31.0/l1-state.json.gz"
+  mkdir -p "$SCRIPT_DIR/configs/v31.0"
+  if ! file_exists "$cache"; then
+    download_file "$V310_L1_STATE_URL" "$cache" "v31.0 l1-state.json.gz (~23 MB)"
   fi
-
-  download_file "$V310_L1_STATE_URL" "$l1_state" "v31.0 l1-state.json.gz (~23 MB)"
+  cp "$cache" "$dest"
+  info "Copied l1-state.json.gz → $dest"
 }
 
 # ── step: generate chain configs ──────────────────────────────────────────────
 generate_chain_configs() {
-  local -r configs_dir="$1"
+  local -r out_dir="$1"
   info "Generating chain config files..."
   local gateway_flag=""
   [[ "$gateway" == true ]] && gateway_flag="--gateway"
 
   "$SCRIPT_DIR/scripts/generate-chain-configs.sh" \
     --count="$count" \
-    --output-dir="$configs_dir" \
+    --output-dir="$out_dir" \
     --version="$version" \
     ${gateway_flag:+"$gateway_flag"}
 }
@@ -209,15 +222,10 @@ generate_chain_configs() {
 # v30.2: extracted from the server Docker image
 # v31.0: downloaded from upstream (newer images don't ship local-chains/)
 ensure_genesis_json() {
-  local -r genesis_file="$1"
-
-  if file_exists "$genesis_file" && [[ "$force_genesis" != true ]]; then
-    info "genesis.json already present — skipping (use --force-genesis to redo)."
-    return
-  fi
+  local -r dest="$1"
 
   if [[ "$version" == "v31.0" ]]; then
-    download_file "$V310_GENESIS_URL" "$genesis_file" "v31.0 genesis.json"
+    download_file "$V310_GENESIS_URL" "$dest" "v31.0 genesis.json"
     return
   fi
 
@@ -227,36 +235,29 @@ ensure_genesis_json() {
     --entrypoint /bin/sh \
     "$server_image" \
     -c "cat /app/local-chains/$version/default/genesis.json" \
-    > "$genesis_file" \
+    > "$dest" \
     || die "Failed to extract genesis.json from $server_image"
-  log "Extracted → $genesis_file"
+  log "Extracted → $dest"
 }
 
 # ── step: ensure gateway-db.tar.gz ───────────────────────────────────────────
 # Downloaded from upstream on first run (v31.0 gateway mode only)
 ensure_gateway_db() {
-  local -r db_file="$1"
-
-  if file_exists "$db_file" && [[ "$force_genesis" != true ]]; then
-    info "gateway-db.tar.gz already present — skipping (use --force-genesis to redo)."
-    return
-  fi
-
-  download_file "$V310_GATEWAY_DB_URL" "$db_file" "v31.0 gateway-db.tar.gz (~1.4 MB)"
+  local -r dest="$1"
+  download_file "$V310_GATEWAY_DB_URL" "$dest" "v31.0 gateway-db.tar.gz (~1.4 MB)"
 }
 
 # ── step: generate compose files ─────────────────────────────────────────────
 generate_compose_files() {
-  local -r compose_dir="$1"
-  local -r configs_dir="$2"
+  local -r out_dir="$1"
   local gateway_flag=""
   [[ "$gateway" == true ]] && gateway_flag="--gateway"
 
-  info "Generating composable docker-compose files in $compose_dir..."
+  info "Generating composable docker-compose files..."
   "$SCRIPT_DIR/scripts/generate-compose.sh" \
     --count="$count" \
-    --output-dir="$compose_dir" \
-    --configs-dir="$configs_dir" \
+    --output-dir="$out_dir" \
+    --configs-dir="$out_dir" \
     --version="$version" \
     --server-image="$server_image" \
     --l1-image="$l1_image" \
@@ -265,12 +266,12 @@ generate_compose_files() {
 
 # ── step: print summary ───────────────────────────────────────────────────────
 print_summary() {
-  local -r compose_dir="$1"
-  local compose_args="-f $compose_dir/docker-compose.l1.yml"
+  local -r out_dir="$1"
+  local compose_args="-f $out_dir/docker-compose.l1.yml"
 
   if [[ "$gateway" == true ]]; then
     echo "  Gateway:  ID=$GATEWAY_CHAIN_ID  RPC → http://localhost:$GATEWAY_EXTERNAL_PORT  (settles to L1)"
-    compose_args="$compose_args -f $compose_dir/docker-compose.gateway-${GATEWAY_CHAIN_ID}.yml"
+    compose_args="$compose_args -f $out_dir/docker-compose.gateway-${GATEWAY_CHAIN_ID}.yml"
   fi
 
   local i chain_id ext_port
@@ -280,7 +281,7 @@ print_summary() {
     local settle_label="→ L1"
     [[ "$gateway" == true ]] && settle_label="→ gateway-$GATEWAY_CHAIN_ID"
     echo "  Chain $i:  ID=$chain_id  RPC → http://localhost:$ext_port  (settles $settle_label)"
-    compose_args="$compose_args -f $compose_dir/docker-compose.zksyncos-${chain_id}.yml"
+    compose_args="$compose_args -f $out_dir/docker-compose.zksyncos-${chain_id}.yml"
   done
 
   echo ""
@@ -301,28 +302,29 @@ main() {
   parse_args "$@"
 
   local -r prebuilt_max="$( [[ "$version" == "v31.0" ]] && echo "$PREBUILT_MAX_V310" || echo "$PREBUILT_MAX_V302" )"
-  local -r configs_dir="$SCRIPT_DIR/configs/$version"
 
-  mkdir -p "$configs_dir" "$output_dir"
-  local -r compose_dir="$(realpath "$output_dir")"
+  # Clean and recreate the output directory
+  rm -rf "$output"
+  mkdir -p "$output"
+  local -r out_dir="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$output")"
 
   local mode_label="$version, L1 settlement"
   [[ "$gateway" == true ]] && mode_label="$version, gateway mode"
-  log "Configuring $count L2 chain(s) [$mode_label]"
+  log "Configuring $count L2 chain(s) [$mode_label] → $out_dir"
   echo ""
 
   check_genesis_requirement "$prebuilt_max"
-  ensure_l1_state "$configs_dir/l1-state.json.gz"
-  generate_chain_configs "$configs_dir"
-  ensure_genesis_json "$configs_dir/genesis.json"
-  [[ "$gateway" == true ]] && ensure_gateway_db "$configs_dir/gateway-db.tar.gz"
-  generate_compose_files "$compose_dir" "$configs_dir"
+  ensure_l1_state "$out_dir/l1-state.json.gz"
+  generate_chain_configs "$out_dir"
+  ensure_genesis_json "$out_dir/genesis.json"
+  [[ "$gateway" == true ]] && ensure_gateway_db "$out_dir/gateway-db.tar.gz"
+  generate_compose_files "$out_dir"
 
   echo ""
   echo -e "${GREEN}${BOLD}✓ Configuration complete!${NC}"
   echo ""
-  echo -e "${BOLD}Generated files in $compose_dir:${NC}"
-  print_summary "$compose_dir"
+  echo -e "${BOLD}Generated files in $out_dir:${NC}"
+  print_summary "$out_dir"
 }
 
 main "$@"

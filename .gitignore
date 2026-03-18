@@ -1,4 +1,7 @@
-# Generated docker-compose output dirs
+# Default output directory (wiped and recreated on every run)
+out/
+
+# Legacy output dirs
 generated/
 generated-prividiums/
 

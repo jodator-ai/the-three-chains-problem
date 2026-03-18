@@ -17,9 +17,9 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_506.yaml']
     volumes:
       - gateway_506_db:/db
-      - ./../../configs/v31.0/chain_506.yaml:/configs/chain_506.yaml:ro
-      - ./../../configs/v31.0/genesis.json:/app/local-chains/v31.0/genesis.json:ro
-      - ./../../configs/v31.0/gateway-db.tar.gz:/app/local-chains/v31.0/gateway-db.tar.gz:ro
+      - ./chain_506.yaml:/configs/chain_506.yaml:ro
+      - ./genesis.json:/app/local-chains/v31.0/genesis.json:ro
+      - ./gateway-db.tar.gz:/app/local-chains/v31.0/gateway-db.tar.gz:ro
     depends_on:
       l1:
         condition: service_healthy

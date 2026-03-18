@@ -42,9 +42,9 @@ L2 chains and posts them to L1, reducing L1 costs. It was introduced in protocol
 
 # Then use the printed docker compose command, e.g.:
 docker compose \
-  -f generated/docker-compose.l1.yml \
-  -f generated/docker-compose.zksyncos-6565.yml \
-  -f generated/docker-compose.zksyncos-6566.yml \
+  -f out/docker-compose.l1.yml \
+  -f out/docker-compose.zksyncos-6565.yml \
+  -f out/docker-compose.zksyncos-6566.yml \
   up -d
 ```
 
@@ -70,7 +70,7 @@ docker compose \
                         v31.0: chains 1–2 pre-configured; 3–8 require genesis generation
   --version=VER       Protocol version: v30.2 (default) | v31.0
   --gateway           Enable gateway mode (v31.0 only)
-  --output-dir=DIR    Output directory (default: ./generated)
+  --output=DIR        Output directory, wiped on each run (default: ./out)
   --force-genesis     Re-extract/re-download genesis assets
   --server-image=IMG  zksync-os-server image (default: latest)
 ```
@@ -78,24 +78,18 @@ docker compose \
 ### How It Works
 
 ```
-configure-l2s.sh --count=N [--version=v31.0] [--gateway]
+configure-l2s.sh --count=N [--version=v31.0] [--gateway] [--output=DIR]
        │
-       ├── scripts/generate-chain-configs.sh
-       │   ├── v30.2: writes chain_XXXX.yaml (bridgehub/keys for v30.2)
-       │   └── v31.0 [--gateway]:
-       │       ├── chain_506.yaml    — gateway chain (settles to L1)
-       │       └── chain_XXXX.yaml  — L2 chains (gateway_rpc_url → chain 506)
+       │  Wipes and recreates --output (default: ./out) then writes everything there:
        │
-       ├── genesis.json
-       │   ├── v30.2: extracted from zksync-os-server Docker image
-       │   └── v31.0: downloaded from upstream repo on first run
-       │
-       ├── [--gateway] gateway-db.tar.gz  — pre-seeded gateway state, downloaded
-       │
-       └── scripts/generate-compose.sh
-           ├── generated/docker-compose.l1.yml
-           ├── generated/docker-compose.gateway-506.yml   (gateway mode only)
-           └── generated/docker-compose.zksyncos-XXXX.yml (one per chain)
+       ├── l1-state.json.gz    — copied from configs/v30.2/ (or downloaded for v31.0)
+       ├── chain_XXXX.yaml     — per-chain config (bridgehub, keys, pubdata mode)
+       ├── chain_506.yaml      — gateway chain config (gateway mode only)
+       ├── genesis.json        — extracted from image (v30.2) or downloaded (v31.0)
+       ├── gateway-db.tar.gz   — pre-seeded gateway state (gateway mode only)
+       ├── docker-compose.l1.yml
+       ├── docker-compose.gateway-506.yml  (gateway mode only)
+       └── docker-compose.zksyncos-XXXX.yml (one per chain)
 ```
 
 ---
@@ -115,10 +109,10 @@ All instances share a single L1 (Anvil).
 ./configure-prividiums.sh --count=3
 
 docker compose \
-  -f generated-prividiums/docker-compose.l1.yml \
-  -f generated-prividiums/docker-compose.prividium-6565.yml \
-  -f generated-prividiums/docker-compose.prividium-6566.yml \
-  -f generated-prividiums/docker-compose.prividium-6567.yml \
+  -f out/docker-compose.l1.yml \
+  -f out/docker-compose.prividium-6565.yml \
+  -f out/docker-compose.prividium-6566.yml \
+  -f out/docker-compose.prividium-6567.yml \
   up -d
 ```
 
@@ -143,8 +137,7 @@ Instance 1 uses the same default ports as upstream
 ./configure-prividiums.sh --count=N [options]
 
   --count=N                Number of Prividium instances (1–4)
-  --output-dir=DIR         Output directory (default: ./generated-prividiums)
-  --force-refresh          Re-download keycloak realm + re-extract genesis.json
+  --output=DIR             Output directory, wiped on each run (default: ./out)
   --prividium-version=V    Prividium image tag (default: v1.153.1)
 ```
 
@@ -156,17 +149,17 @@ Pre-generated output in `examples/`:
 
 | Directory | Command | Description |
 |---|---|---|
-| `examples/l2s-v30.2-2/` | `./configure-l2s.sh --count=2` | 2 chains, v30.2, L1 settlement |
-| `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3` | 3 chains, v30.2, L1 settlement |
-| `examples/l2s-v30.2-4/` | `./configure-l2s.sh --count=4` | 4 chains, v30.2, L1 settlement |
-| `examples/l2s-v31.0-1/` | `./configure-l2s.sh --count=1 --version=v31.0` | 1 chain, v31.0, L1 settlement |
-| `examples/l2s-v31.0-2/` | `./configure-l2s.sh --count=2 --version=v31.0` | 2 chains, v31.0, L1 settlement |
-| `examples/l2s-v31.0-gateway-2/` | `./configure-l2s.sh --count=2 --version=v31.0 --gateway` | Gateway + 2 chains, v31.0 |
-| `examples/prividium-1/` | `./configure-prividiums.sh --count=1` | 1 full Prividium stack |
-| `examples/prividium-3/` | `./configure-prividiums.sh --count=3` | 3 full Prividium stacks (shared postgres) |
+| `examples/l2s-v30.2-2/` | `./configure-l2s.sh --count=2 --output=examples/l2s-v30.2-2` | 2 chains, v30.2, L1 settlement |
+| `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3 --output=examples/l2s-v30.2-3` | 3 chains, v30.2, L1 settlement |
+| `examples/l2s-v30.2-4/` | `./configure-l2s.sh --count=4 --output=examples/l2s-v30.2-4` | 4 chains, v30.2, L1 settlement |
+| `examples/l2s-v31.0-1/` | `./configure-l2s.sh --count=1 --version=v31.0 --output=examples/l2s-v31.0-1` | 1 chain, v31.0, L1 settlement |
+| `examples/l2s-v31.0-2/` | `./configure-l2s.sh --count=2 --version=v31.0 --output=examples/l2s-v31.0-2` | 2 chains, v31.0, L1 settlement |
+| `examples/l2s-v31.0-gateway-2/` | `./configure-l2s.sh --count=2 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-2` | Gateway + 2 chains, v31.0 |
+| `examples/prividium-1/` | `./configure-prividiums.sh --count=1 --output=examples/prividium-1` | 1 full Prividium stack |
+| `examples/prividium-3/` | `./configure-prividiums.sh --count=3 --output=examples/prividium-3` | 3 full Prividium stacks (shared postgres) |
 
-Each example includes all compose files and chain configs. The `l1-state.json.gz` is not
-duplicated — v30.2 is tracked at `configs/v30.2/l1-state.json.gz`; v31.0 is downloaded on demand.
+Each example is self-contained: all compose files, chain configs, genesis, and L1 state
+are in the same directory. Volume paths in compose files are relative (`./chain_XXXX.yaml`, etc.).
 
 ---
 
@@ -214,9 +207,7 @@ the-three-chains-problem/
 ```
 
 Generated files (gitignored):
-- `generated/`, `generated-prividiums/` — output dirs
-- `configs/v30.2/chain_*.yaml`, `genesis.json`, `keycloak-realm.json` — regenerated each run
-- `configs/v31.0/` — downloaded from upstream on first run
+- `out/` — default output directory (wiped and recreated on every run)
 
 ## Compatibility
 

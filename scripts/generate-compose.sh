@@ -96,7 +96,7 @@ services:
   l1:
     image: $l1_image
     volumes:
-      - ./${rel_configs}/l1-state.json.gz:/l1-state.json.gz:ro
+      - ${rel_configs}/l1-state.json.gz:/l1-state.json.gz:ro
       - l1state:/home/foundry/l1state
     entrypoint: ''
     user: 'root'
@@ -145,9 +145,9 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${GATEWAY_CHAIN_ID}.yaml']
     volumes:
       - gateway_${GATEWAY_CHAIN_ID}_db:/db
-      - ./${rel_configs}/chain_${GATEWAY_CHAIN_ID}.yaml:/configs/chain_${GATEWAY_CHAIN_ID}.yaml:ro
-      - ./${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
-      - ./${rel_configs}/gateway-db.tar.gz:/app/local-chains/${version}/gateway-db.tar.gz:ro
+      - ${rel_configs}/chain_${GATEWAY_CHAIN_ID}.yaml:/configs/chain_${GATEWAY_CHAIN_ID}.yaml:ro
+      - ${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
+      - ${rel_configs}/gateway-db.tar.gz:/app/local-chains/${version}/gateway-db.tar.gz:ro
     depends_on:
       l1:
         condition: service_healthy
@@ -201,8 +201,8 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${chain_id}.yaml']
     volumes:
       - ${db_vol}:/db
-      - ./${rel_configs}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
-      - ./${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
+      - ${rel_configs}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
+      - ${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
     depends_on:
       l1:
         condition: service_healthy${gateway_dep}

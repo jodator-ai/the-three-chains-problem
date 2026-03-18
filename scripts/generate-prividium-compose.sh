@@ -124,7 +124,7 @@ services:
   l1:
     image: $l1_image
     volumes:
-      - ./${rel_configs}/l1-state.json.gz:/l1-state.json.gz:ro
+      - ${rel_configs}/l1-state.json.gz:/l1-state.json.gz:ro
       - l1state:/home/foundry/l1state
     entrypoint: ''
     user: 'root'
@@ -259,7 +259,7 @@ services:
       - start-dev
       - --import-realm
     volumes:
-      - ./${rel_configs}/keycloak-realm.json:/opt/keycloak/data/import/realm-export.json:ro
+      - ${rel_configs}/keycloak-realm.json:/opt/keycloak/data/import/realm-export.json:ro
     healthcheck:
       test: ['CMD-SHELL', 'exec 3<>/dev/tcp/127.0.0.1/8080']
       interval: 10s
@@ -281,8 +281,8 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${chain_id}.yaml']
     volumes:
       - zksyncos_${s}_db:/db
-      - ./${rel_configs}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
-      - ./${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
+      - ${rel_configs}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
+      - ${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
     depends_on:
       l1:
         condition: service_healthy
@@ -447,7 +447,7 @@ services:
     image: ghcr.io/matter-labs/block-explorer-app:latest
     platform: linux/amd64
     volumes:
-      - ./${rel_cfg_subdir}/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
+      - ${rel_cfg_subdir}/block-explorer-config.js:/usr/share/nginx/html/config.js:ro
     ports:
       - '${p_explorer_app}:3010'
     depends_on:

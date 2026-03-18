@@ -36,11 +36,11 @@ services:
       - METRICS_PORT=9091
       - SEQUENCER_RPC_URL=http://zksyncos-6566:3051
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/prividium_api_6566
-      - CORS_ORIGIN=http://localhost:3200,http://localhost:3201,http://localhost:3202
+      - CORS_ORIGIN=http://localhost:3200,http://localhost:3201,http://localhost:3210,http://localhost:3202
       - AUTH_METHODS=oidc,crypto_native
       - NODE_ENV=production
       - SIWE_CHAIN_ID=6566
-      - SIWE_VALID_DOMAINS=localhost:3200,localhost:3201
+      - SIWE_VALID_DOMAINS=localhost:3200,localhost:3201,localhost:3210,localhost:3202
       - SIWE_HMAC_SECRET=aaaaaaaa00000000aaaaaaaa00000000aaaaaaaa00000000aaaaaaaa00000000
       - OIDC_JWKS_URI=http://keycloak-6566:8080/realms/prividium/protocol/openid-connect/certs
       - OIDC_JWT_AUD=prividium-client

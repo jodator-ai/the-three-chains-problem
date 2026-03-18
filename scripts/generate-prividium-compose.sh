@@ -576,11 +576,11 @@ services:
       - METRICS_PORT=9091
       - SEQUENCER_RPC_URL=http://zksyncos-${s}:${zksyncos_int_port}
       - DATABASE_URL=postgres://postgres:postgres@postgres:5432/prividium_api_${chain_id}
-      - CORS_ORIGIN=http://localhost:${p_admin},http://localhost:${p_user},http://localhost:${p_explorer_api}
+      - CORS_ORIGIN=http://localhost:${p_admin},http://localhost:${p_user},http://localhost:${p_explorer_app},http://localhost:${p_explorer_api}
       - AUTH_METHODS=oidc,crypto_native
       - NODE_ENV=production
       - SIWE_CHAIN_ID=${chain_id}
-      - SIWE_VALID_DOMAINS=localhost:${p_admin},localhost:${p_user}
+      - SIWE_VALID_DOMAINS=localhost:${p_admin},localhost:${p_user},localhost:${p_explorer_app},localhost:${p_explorer_api}
       - SIWE_HMAC_SECRET=aaaaaaaa00000000aaaaaaaa00000000aaaaaaaa00000000aaaaaaaa00000000
       - OIDC_JWKS_URI=http://keycloak-${s}:8080/realms/prividium/protocol/openid-connect/certs
       - OIDC_JWT_AUD=prividium-client

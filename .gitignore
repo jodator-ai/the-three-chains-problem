@@ -6,7 +6,7 @@ configs/v30.2/chain_*.yaml
 configs/v30.2/wallets_*.yaml
 configs/v30.2/contracts_*.yaml
 configs/v30.2/genesis.json
-configs/v30.2/l1-state.json.gz
+
 configs/v30.2/.workspace/
 
 # Genesis generator Docker build cache

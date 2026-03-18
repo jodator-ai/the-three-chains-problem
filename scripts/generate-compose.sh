@@ -60,7 +60,7 @@ services:
         echo 'Decompressing L1 state...'
         gzip -d < /l1-state.json.gz > /home/foundry/l1state/state.json
       fi
-      anvil --state=/home/foundry/l1state/state.json --port 5010 --host 0.0.0.0
+      anvil --state=/home/foundry/l1state/state.json --preserve-historical-states --port 5010 --host 0.0.0.0
       "
 
 COMPOSE_START

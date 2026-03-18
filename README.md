@@ -112,12 +112,13 @@ All instances share a single L1 (Anvil).
 ### Quick Start
 
 ```bash
-./configure-prividiums.sh --count=2
+./configure-prividiums.sh --count=3
 
 docker compose \
   -f generated-prividiums/docker-compose.l1.yml \
   -f generated-prividiums/docker-compose.prividium-6565.yml \
   -f generated-prividiums/docker-compose.prividium-6566.yml \
+  -f generated-prividiums/docker-compose.prividium-6567.yml \
   up -d
 ```
 
@@ -156,10 +157,13 @@ Pre-generated output in `examples/`:
 | Directory | Command | Description |
 |---|---|---|
 | `examples/l2s-v30.2-2/` | `./configure-l2s.sh --count=2` | 2 chains, v30.2, L1 settlement |
+| `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3` | 3 chains, v30.2, L1 settlement |
 | `examples/l2s-v30.2-4/` | `./configure-l2s.sh --count=4` | 4 chains, v30.2, L1 settlement |
+| `examples/l2s-v31.0-1/` | `./configure-l2s.sh --count=1 --version=v31.0` | 1 chain, v31.0, L1 settlement |
+| `examples/l2s-v31.0-2/` | `./configure-l2s.sh --count=2 --version=v31.0` | 2 chains, v31.0, L1 settlement |
 | `examples/l2s-v31.0-gateway-2/` | `./configure-l2s.sh --count=2 --version=v31.0 --gateway` | Gateway + 2 chains, v31.0 |
 | `examples/prividium-1/` | `./configure-prividiums.sh --count=1` | 1 full Prividium stack |
-| `examples/prividium-2/` | `./configure-prividiums.sh --count=2` | 2 full Prividium stacks |
+| `examples/prividium-3/` | `./configure-prividiums.sh --count=3` | 3 full Prividium stacks (shared postgres) |
 
 Each example includes all compose files and chain configs. The `l1-state.json.gz` is not
 duplicated — v30.2 is tracked at `configs/v30.2/l1-state.json.gz`; v31.0 is downloaded on demand.
@@ -200,10 +204,13 @@ the-three-chains-problem/
 │                                 # (v31.0 assets are downloaded on first run)
 └── examples/                     # Pre-generated output for reference
     ├── l2s-v30.2-2/              # 2 chains, v30.2
+    ├── l2s-v30.2-3/              # 3 chains, v30.2
     ├── l2s-v30.2-4/              # 4 chains, v30.2
+    ├── l2s-v31.0-1/              # 1 chain, v31.0
+    ├── l2s-v31.0-2/              # 2 chains, v31.0
     ├── l2s-v31.0-gateway-2/      # gateway + 2 chains, v31.0
     ├── prividium-1/              # 1 Prividium instance
-    └── prividium-2/              # 2 Prividium instances
+    └── prividium-3/              # 3 Prividium instances (shared postgres)
 ```
 
 Generated files (gitignored):

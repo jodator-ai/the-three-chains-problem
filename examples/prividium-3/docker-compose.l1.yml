@@ -50,6 +50,10 @@ services:
       cat > /docker-entrypoint-initdb.d/init.sql << 'SQLEOF'
       CREATE DATABASE prividium_api_6565;
       CREATE DATABASE prividium_block_explorer_6565;
+      CREATE DATABASE prividium_api_6566;
+      CREATE DATABASE prividium_block_explorer_6566;
+      CREATE DATABASE prividium_api_6567;
+      CREATE DATABASE prividium_block_explorer_6567;
       SQLEOF
       exec docker-entrypoint.sh postgres
       "

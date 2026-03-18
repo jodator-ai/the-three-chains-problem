@@ -17,9 +17,9 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_506.yaml']
     volumes:
       - gateway_506_db:/db
-      - /home/claude/three-chain-problem/the-three-chains-problem/examples/l2s-v31.0-gateway-2/configs/chain_506.yaml:/configs/chain_506.yaml:ro
-      - /home/claude/three-chain-problem/the-three-chains-problem/examples/l2s-v31.0-gateway-2/configs/genesis.json:/app/local-chains/v31.0/genesis.json:ro
-      - /home/claude/three-chain-problem/the-three-chains-problem/examples/l2s-v31.0-gateway-2/configs/gateway-db.tar.gz:/app/local-chains/v31.0/gateway-db.tar.gz:ro
+      - ./../../configs/v31.0/chain_506.yaml:/configs/chain_506.yaml:ro
+      - ./../../configs/v31.0/genesis.json:/app/local-chains/v31.0/genesis.json:ro
+      - ./../../configs/v31.0/gateway-db.tar.gz:/app/local-chains/v31.0/gateway-db.tar.gz:ro
     depends_on:
       l1:
         condition: service_healthy

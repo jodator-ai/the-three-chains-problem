@@ -63,6 +63,7 @@ RUN curl -L https://foundry.paradigm.xyz | bash && \
 # Tag from local-chains/v30.2/versions.yaml: era-contracts tag = zkos-v0.30.2
 ARG ERA_CONTRACTS_TAG=zkos-v0.30.2
 RUN git clone --depth 1 --branch ${ERA_CONTRACTS_TAG} \
+    --recurse-submodules --shallow-submodules \
     https://github.com/matter-labs/era-contracts.git /era-contracts
 
 # Clone zksync-era (for zkstack CLI)

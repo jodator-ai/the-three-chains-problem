@@ -188,7 +188,7 @@ generate_compose_files() {
 # ── step: print summary ───────────────────────────────────────────────────────
 print_summary() {
   local -r out_dir="$1"
-  local compose_args="-f $out_dir/docker-compose.l1.yml"
+  local compose_args="-f docker-compose.l1.yml"
 
   local i chain_id offset
   for i in $(seq 1 "$count"); do
@@ -201,7 +201,7 @@ print_summary() {
     echo "    Block Explorer→ http://localhost:$(( 3010 + offset ))"
     echo "    zkSync RPC    → http://localhost:$(( 5050 + offset ))"
     echo "    Keycloak      → http://localhost:$(( 5080 + offset ))"
-    compose_args="$compose_args -f $out_dir/docker-compose.prividium-${chain_id}.yml"
+    compose_args="$compose_args -f docker-compose.prividium-${chain_id}.yml"
   done
 
   echo ""
@@ -212,14 +212,17 @@ print_summary() {
   echo ""
   echo -e "${BOLD}To start:${NC}"
   echo ""
+  echo -e "  ${BOLD}cd $out_dir${NC}"
   echo -e "  ${BOLD}docker compose $compose_args up -d${NC}"
   echo ""
   echo -e "${BOLD}To view logs:${NC}"
   echo ""
+  echo -e "  ${BOLD}cd $out_dir${NC}"
   echo -e "  ${BOLD}docker compose $compose_args logs -f${NC}"
   echo ""
   echo -e "${BOLD}To stop:${NC}"
   echo ""
+  echo -e "  ${BOLD}cd $out_dir${NC}"
   echo -e "  ${BOLD}docker compose $compose_args down${NC}"
   echo ""
 }

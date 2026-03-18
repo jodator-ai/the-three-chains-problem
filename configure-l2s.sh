@@ -267,11 +267,11 @@ generate_compose_files() {
 # ── step: print summary ───────────────────────────────────────────────────────
 print_summary() {
   local -r out_dir="$1"
-  local compose_args="-f $out_dir/docker-compose.l1.yml"
+  local compose_args="-f docker-compose.l1.yml"
 
   if [[ "$gateway" == true ]]; then
     echo "  Gateway:  ID=$GATEWAY_CHAIN_ID  RPC → http://localhost:$GATEWAY_EXTERNAL_PORT  (settles to L1)"
-    compose_args="$compose_args -f $out_dir/docker-compose.gateway-${GATEWAY_CHAIN_ID}.yml"
+    compose_args="$compose_args -f docker-compose.gateway-${GATEWAY_CHAIN_ID}.yml"
   fi
 
   local i chain_id ext_port
@@ -281,7 +281,7 @@ print_summary() {
     local settle_label="→ L1"
     [[ "$gateway" == true ]] && settle_label="→ gateway-$GATEWAY_CHAIN_ID"
     echo "  Chain $i:  ID=$chain_id  RPC → http://localhost:$ext_port  (settles $settle_label)"
-    compose_args="$compose_args -f $out_dir/docker-compose.zksyncos-${chain_id}.yml"
+    compose_args="$compose_args -f docker-compose.zksyncos-${chain_id}.yml"
   done
 
   echo ""
@@ -289,10 +289,12 @@ print_summary() {
   echo ""
   echo -e "${BOLD}To start:${NC}"
   echo ""
+  echo -e "  ${BOLD}cd $out_dir${NC}"
   echo -e "  ${BOLD}docker compose $compose_args up -d${NC}"
   echo ""
   echo -e "${BOLD}To stop:${NC}"
   echo ""
+  echo -e "  ${BOLD}cd $out_dir${NC}"
   echo -e "  ${BOLD}docker compose $compose_args down${NC}"
   echo ""
 }

@@ -223,6 +223,7 @@ ensure_genesis_json() {
 
   info "Extracting genesis.json from server image ($version)..."
   docker run --rm \
+    --platform linux/amd64 \
     --entrypoint /bin/sh \
     "$server_image" \
     -c "cat /app/local-chains/$version/default/genesis.json" \

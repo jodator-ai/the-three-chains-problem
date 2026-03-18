@@ -145,6 +145,7 @@ ensure_genesis_json() {
 
   info "Extracting genesis.json from zksync-os-server image..."
   docker run --rm \
+    --platform linux/amd64 \
     --entrypoint /bin/sh \
     "$server_image" \
     -c "cat /app/local-chains/$version/genesis.json" \

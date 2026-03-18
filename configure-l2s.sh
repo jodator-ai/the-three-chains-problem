@@ -144,7 +144,7 @@ parse_args() {
   [[ -n "$count" ]]    || die "--count=N is required. $_hint"
   is_integer "$count"  || die "--count must be a positive integer."
   [[ "$count" -ge 1 ]] || die "--count must be at least 1."
-  [[ "$count" -le 8 ]] || die "--count must be at most 8."
+  [[ "$count" -le 10 ]] || die "--count must be at most 10."
 
   [[ "$version" == "v30.2" || "$version" == "v31.0" ]] \
     || die "Unsupported version '$version'. Supported: v30.2, v31.0."
@@ -157,8 +157,17 @@ parse_args() {
 # ── step: check genesis requirement ──────────────────────────────────────────
 check_genesis_requirement() {
   local -r prebuilt_max="$1"
-  local chains_needing_genesis=()
 
+  [[ "$count" -le "$prebuilt_max" ]] && return 0
+
+  # Check sentinel file written by generate-genesis.sh --docker
+  local sentinel="$SCRIPT_DIR/configs/$version/genesis-max-count"
+  local generated_count=0
+  if [[ -f "$sentinel" ]]; then
+    generated_count="$(cat "$sentinel" 2>/dev/null || echo 0)"
+  fi
+
+  local chains_needing_genesis=()
   local i
   for i in $(seq 1 "$count"); do
     if [[ "$i" -gt "$prebuilt_max" ]]; then
@@ -166,11 +175,11 @@ check_genesis_requirement() {
     fi
   done
 
-  if [[ ${#chains_needing_genesis[@]} -gt 0 ]]; then
+  if [[ "$generated_count" -lt "$count" ]]; then
     warn "Chains ${chains_needing_genesis[*]} are not pre-configured for $version."
     echo ""
     echo -e "They need L1 contract deployment via genesis generation."
-    echo -e "Run (Docker mode recommended):"
+    echo -e "Run (Docker required):"
     echo ""
     echo -e "  ${BOLD}./scripts/generate-genesis.sh --docker --count=$count${NC}"
     echo ""

@@ -79,17 +79,15 @@ if [[ "$USE_DOCKER" == "true" ]]; then
     error "Genesis Dockerfile not found at $GENESIS_DIR/Dockerfile"
   fi
 
-  # Build the generator image if not present
+  # Always run docker build — Docker layer cache makes this a no-op when nothing changed.
+  # This ensures the image is always up-to-date if the Dockerfile changes.
   IMAGE_NAME="zksync-genesis-generator:$VERSION"
-  if ! docker image inspect "$IMAGE_NAME" &>/dev/null; then
-    log "Building genesis generator Docker image (this may take 20-30 minutes on first run)..."
-    docker build \
-      --build-arg PROTOCOL_VERSION="$VERSION" \
-      -t "$IMAGE_NAME" \
-      "$GENESIS_DIR"
-  else
-    log "Using existing genesis generator image: $IMAGE_NAME"
-  fi
+  log "Building genesis generator Docker image (cached layers make repeat runs fast)..."
+  docker build \
+    --build-arg PROTOCOL_VERSION="$VERSION" \
+    -t "$IMAGE_NAME" \
+    "$GENESIS_DIR" \
+    || error "Failed to build genesis generator image."
 
   # Run genesis generation
   log "Running genesis generation in Docker..."
@@ -100,6 +98,10 @@ if [[ "$USE_DOCKER" == "true" ]]; then
     --output /output
 
   log "Genesis generation complete. Configs written to $OUTPUT_DIR/"
+
+  # Write sentinel file so configure scripts know genesis was run for this many chains
+  echo "${#CHAINS[@]}" > "$OUTPUT_DIR/genesis-max-count"
+  log "Wrote genesis-max-count=${#CHAINS[@]} → $OUTPUT_DIR/genesis-max-count"
 
 else
   # ────────────────────────────────────────────────────────────────
@@ -151,4 +153,4 @@ for CHAIN_ID in "${CHAINS[@]}"; do
   echo "  $OUTPUT_DIR/chain_${CHAIN_ID}.yaml"
 done
 echo ""
-echo "Now re-run configure-l2s to generate the docker-compose file."
+echo "Now re-run configure-l2s.sh (or configure-prividiums.sh) to generate the docker-compose file."

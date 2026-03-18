@@ -53,10 +53,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
 # era-contracts tag zkos-v0.30.2 requires cast/forge 0.0.4 or 1.3.5
 # zkstack-cli tag protocol-upgrade-v1.3.1 uses foundry 1.3.5
 RUN curl -L https://foundry.paradigm.xyz | bash && \
-    /root/.foundry/bin/foundryup --version stable && \
+    /root/.foundry/bin/foundryup && \
     ln -s /root/.foundry/bin/anvil /usr/local/bin/anvil && \
     ln -s /root/.foundry/bin/cast  /usr/local/bin/cast  && \
-    ln -s /root/.foundry/bin/forge /usr/local/bin/forge
+    ln -s /root/.foundry/bin/forge /usr/local/bin/forge && \
+    forge --version
 
 # Clone era-contracts at the correct tag for the protocol version
 # Tag from local-chains/v30.2/versions.yaml: era-contracts tag = zkos-v0.30.2

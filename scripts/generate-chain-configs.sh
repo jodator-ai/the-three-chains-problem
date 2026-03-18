@@ -45,6 +45,8 @@ readonly -a V302_COMMIT_KEYS=(
   "0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6"   # [6] 6570 — hardhat 9
   "0xf214f2b2cd398c806f84e317254e0f0b801d0643303237d97a22a48e01628897"   # [7] 6571 — hardhat 10
   "0x701b615bbdfb9de65240bc28bd21bbc0d996645a3dd57e7b12bc2bdf6f192c82"   # [8] 6572 — hardhat 11
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"   # [9] 6573 — hardhat 0
+  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"   # [10] 6574 — hardhat 1
 )
 
 readonly -a V302_PROVE_KEYS=(
@@ -57,6 +59,8 @@ readonly -a V302_PROVE_KEYS=(
   "0x47c99abed3324a2707c28affff1267e45918ec8c3f20b8aa892e8b065d2942dd"   # [6] 6570 — hardhat 13
   "0xc526ee95bf44d8fc405a158bb884d9d1238d99f0612e9f33d006bb0789009aaa"   # [7] 6571 — hardhat 14
   "0x8166f546bab6da521a8369cab06c5d2b9e46670292d85c875ee9ec20e84ffb61"   # [8] 6572 — hardhat 15
+  "0x27e5cb19aab75e7cd27e3c5a553fd7a11f4c73cb37c680cadc31bd7a8fc6bba0"   # [9] 6573 — hardhat 18
+  "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"   # [10] 6574 — hardhat 0
 )
 
 readonly -a V302_EXECUTE_KEYS=(
@@ -67,8 +71,10 @@ readonly -a V302_EXECUTE_KEYS=(
   "0x4bbbf85ce3377467afe5d46f804f221813b2bb87f24d81f60f1fcdbf7cbf4356"   # [4] 6568 — hardhat 7
   "0xea6c44ac03bff858b476bba28179e306548d5b3f837de7c63ace0a0ca7e30769"   # [5] 6569 — hardhat 16
   "0x092db5b4b974b989547f9b71b7e50af2e18db749a81db2e2d0cef36c62af9b29"   # [6] 6570 — hardhat 17
-  "0xc526ee95bf44d8fc405a158bb884d9d1238d99f0612e9f33d006bb0789009aaa"   # [7] 6571 (placeholder)
-  "0x8166f546bab6da521a8369cab06c5d2b9e46670292d85c875ee9ec20e84ffb61"   # [8] 6572 (placeholder)
+  "0xc526ee95bf44d8fc405a158bb884d9d1238d99f0612e9f33d006bb0789009aaa"   # [7] 6571 — hardhat 14
+  "0x8166f546bab6da521a8369cab06c5d2b9e46670292d85c875ee9ec20e84ffb61"   # [8] 6572 — hardhat 15
+  "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d"   # [9] 6573 — hardhat 1
+  "0x27e5cb19aab75e7cd27e3c5a553fd7a11f4c73cb37c680cadc31bd7a8fc6bba0"   # [10] 6574 — hardhat 18
 )
 
 # ── Operator private keys — v31.0 L2 chains (Gateway settlement) ─────────────
@@ -152,7 +158,7 @@ done
 [[ -n "$output_dir" ]] || die "--output-dir is required"
 is_integer "$count"    || die "--count must be a positive integer"
 [[ "$count" -ge 1 ]]   || die "--count must be at least 1"
-[[ "$count" -le 8 ]]   || die "--count must be at most 8"
+[[ "$count" -le 10 ]]  || die "--count must be at most 10"
 
 [[ "$gateway" == false || "$version" == "v31.0" ]] \
   || die "--gateway requires --version=v31.0"

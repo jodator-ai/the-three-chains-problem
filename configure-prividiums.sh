@@ -113,8 +113,75 @@ parse_args() {
   [[ -n "$count" ]]    || die "--count=N is required. $_usage_hint"
   is_integer "$count"  || die "--count must be a positive integer."
   [[ "$count" -ge 1 ]] || die "--count must be at least 1."
-  [[ "$count" -le "$PREBUILT_MAX" ]] \
-    || die "--count must be at most $PREBUILT_MAX (chains 5+ require genesis generation — run ./scripts/generate-genesis.sh first)."
+  [[ "$count" -le 10 ]] || die "--count must be at most 10."
+}
+
+# ── step: check genesis requirement ──────────────────────────────────────────
+# Chains 1-4 (v30.2) are pre-configured; chains 5+ require genesis generation.
+# generate-genesis.sh writes configs/v30.2/genesis-max-count with the generated count.
+check_genesis_requirement() {
+  [[ "$count" -le "$PREBUILT_MAX" ]] && return 0
+
+  local sentinel="$SCRIPT_DIR/configs/$version/genesis-max-count"
+  local generated_count=0
+  if [[ -f "$sentinel" ]]; then
+    generated_count="$(cat "$sentinel" 2>/dev/null || echo 0)"
+  fi
+
+  if [[ "$generated_count" -lt "$count" ]]; then
+    warn "Chains $((PREBUILT_MAX + 1))–$count are not pre-configured for $version."
+    echo ""
+    echo -e "They require L1 contract deployment via genesis generation."
+    echo -e "Run (Docker required):"
+    echo ""
+    echo -e "  ${BOLD}./scripts/generate-genesis.sh --docker --count=$count${NC}"
+    echo ""
+    echo "Then re-run this command."
+    exit 1
+  fi
+}
+
+# ── step: download bundler contracts ─────────────────────────────────────────
+# Contracts are cached in configs/bundler/; downloaded once from upstream.
+# bridge-funds and entrypoint-deployer mount this shared directory read-only.
+readonly UPSTREAM_PRIVIDIUM_RAW="https://raw.githubusercontent.com/matter-labs/local-prividium/main"
+readonly BUNDLER_CONTRACTS_CACHE="$SCRIPT_DIR/configs/bundler"
+
+download_bundler_contracts() {
+  local -r dest_dir="$1"
+
+  if [[ -d "$BUNDLER_CONTRACTS_CACHE" && -f "$BUNDLER_CONTRACTS_CACHE/package.json" ]]; then
+    info "Bundler contracts already cached at $BUNDLER_CONTRACTS_CACHE"
+    cp -r "$BUNDLER_CONTRACTS_CACHE/." "$dest_dir/"
+    return
+  fi
+
+  info "Downloading bundler contracts from upstream local-prividium..."
+  mkdir -p "$BUNDLER_CONTRACTS_CACHE"
+
+  local files=(
+    "package.json"
+    "pnpm-lock.yaml"
+    "scripts/bridge-funds.ts"
+    "entrypoint/foundry.toml"
+    "entrypoint/soldeer.lock"
+    "entrypoint/script/deploy.sh"
+    "entrypoint/script/DeployEntryPoint.s.sol"
+  )
+
+  for f in "${files[@]}"; do
+    local url="$UPSTREAM_PRIVIDIUM_RAW/dev/bundler/contracts/$f"
+    local out="$BUNDLER_CONTRACTS_CACHE/$f"
+    mkdir -p "$(dirname "$out")"
+    if cmd_exists curl; then
+      curl -fsSL "$url" -o "$out" || warn "Could not download bundler contracts file: $f (skipped)"
+    elif cmd_exists wget; then
+      wget -q "$url" -O "$out" || warn "Could not download bundler contracts file: $f (skipped)"
+    fi
+  done
+
+  cp -r "$BUNDLER_CONTRACTS_CACHE/." "$dest_dir/"
+  log "Downloaded bundler contracts → $BUNDLER_CONTRACTS_CACHE"
 }
 
 # ── step: copy l1-state ───────────────────────────────────────────────────────
@@ -229,6 +296,8 @@ main() {
   log "Configuring $count Prividium instance(s) for ZKsync OS $version → $out_dir"
   echo ""
 
+  check_genesis_requirement
+  download_bundler_contracts "$dev_dir/bundler/contracts"
   copy_l1_state "$dev_dir/l1/l1-state.json.gz"
   generate_chain_configs "$dev_dir"
   # Move each chain config into its per-instance zksyncos subdir

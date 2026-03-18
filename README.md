@@ -159,7 +159,11 @@ out/
 | Block Explorer | 3010 | 3210 | 3010+(N-1)×200 |
 | zkSync RPC | 5050 | 5250 | 5050+(N-1)×200 |
 | Keycloak | 5080 | 5280 | 5080+(N-1)×200 |
-| Postgres | 5432 | 5632 | 5432+(N-1)×200 |
+| Prometheus | 9090 | 9290 | 9090+(N-1)×200 |
+| Grafana | 3100 | 3300 | 3100+(N-1)×200 |
+| Webhook Service | 8080 | 8280 | 8080+(N-1)×200 |
+| Bundler (ERC-4337) | 4337 | 4537 | 4337+(N-1)×200 |
+| Postgres | 5432 | 5632 | 5432+(N-1)×200 (shared) |
 
 Instance 1 uses the same default ports as upstream
 [local-prividium](https://github.com/matter-labs/local-prividium).
@@ -169,7 +173,7 @@ Instance 1 uses the same default ports as upstream
 ```
 ./configure-prividiums.sh --count=N [options]
 
-  --count=N                Number of Prividium instances (1–4)
+  --count=N                Number of Prividium instances (1–10; chains 5+ require genesis generation)
   --output=DIR             Output directory, wiped on each run (default: ./out)
   --prividium-version=V    Prividium image tag (default: v1.153.1)
 ```
@@ -198,15 +202,20 @@ are in the same directory. Volume paths in compose files are relative to the out
 
 ## Genesis Generation for 5+ Chains
 
-Chains 1–4 (v30.2) and 1–2 (v31.0) are pre-configured. More chains require L1 contract deployment:
+Chains 1–4 (v30.2) and 1–2 (v31.0) are pre-configured with operator keys and a bundled L1 state.
+More chains require L1 contract deployment. Genesis generation always uses Docker:
 
 ```bash
-# Generate genesis for 5 chains (~30min first run; cached after)
-./scripts/generate-genesis.sh --docker --count=5
+# Generate genesis for 10 chains (~30min first run; Docker layer cache makes reruns fast)
+./scripts/generate-genesis.sh --docker --count=10
 
 # Then configure as usual
-./configure-l2s.sh --count=5
+./configure-l2s.sh --count=10
+./configure-prividiums.sh --count=10
 ```
+
+The script writes a `configs/v30.2/genesis-max-count` sentinel file so the configure scripts
+know genesis was generated for enough chains and skip the requirement check automatically.
 
 ---
 

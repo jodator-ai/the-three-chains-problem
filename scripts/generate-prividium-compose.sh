@@ -22,6 +22,10 @@
 #   block-explorer: 3010 + offset
 #   data-fetcher  : 3040 + offset
 #   explorer-api  : 3002 + offset
+#   prometheus    : 9090 + offset
+#   grafana       : 3100 + offset
+#   webhook-svc   : 8080 + offset  (API), 8081 + offset (internal)
+#   bundler       : 4337 + offset
 #   postgres      : 5432  (shared, single instance in docker-compose-l1.yaml)
 
 set -euo pipefail
@@ -346,6 +350,46 @@ window['##runtimeConfig'] = {
 EOF
 }
 
+# ── per-instance prometheus config ───────────────────────────────────────────
+generate_prometheus_config() {
+  local -r instance_num="$1"
+  local -r chain_id="$2"
+  local -r p_api_metrics="$3"
+
+  local -r out_dir="$configs_abs/prividium-${instance_num}/prometheus"
+  mkdir -p "$out_dir"
+  cat > "$out_dir/prometheus.yml" <<EOF
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: 'prividium-api'
+    static_configs:
+      - targets: ['prividium-api-${chain_id}:9091']
+EOF
+  log "Generated $out_dir/prometheus.yml"
+}
+
+# ── per-instance grafana datasource config ────────────────────────────────────
+generate_grafana_config() {
+  local -r instance_num="$1"
+  local -r chain_id="$2"
+
+  local -r out_dir="$configs_abs/prividium-${instance_num}/grafana/datasources"
+  mkdir -p "$out_dir"
+  cat > "$out_dir/prometheus.yml" <<EOF
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    url: http://prometheus-${chain_id}:9090
+    access: proxy
+    isDefault: true
+EOF
+  log "Generated $out_dir/prometheus.yml"
+}
+
 # ── per-instance deps compose file (zksyncos, keycloak, block-explorer) ───────
 generate_prividium_deps() {
   local -r instance_num="$1"
@@ -358,6 +402,13 @@ generate_prividium_deps() {
   local -r p_explorer_app=$(( 3010 + offset ))
   local -r p_explorer_api=$(( 3002 + offset ))
   local -r p_data_fetcher=$(( 3040 + offset ))
+  local -r p_prometheus=$(( 9090 + offset ))
+  local -r p_grafana=$(( 3100 + offset ))
+  local -r p_webhook_api=$(( 8080 + offset ))
+  local -r p_webhook_int=$(( 8081 + offset ))
+  local -r p_bundler=$(( 4337 + offset ))
+  local -r p_admin=$(( 3000 + offset ))
+  local -r p_user=$(( 3001 + offset ))
   # Internal port must match what generate-chain-configs.sh writes: 3049 + chain_num
   local -r zksyncos_int_port=$(( 3049 + instance_num ))
 
@@ -512,8 +563,159 @@ services:
       block-explorer-api-${s}:
         condition: service_started
 
+  # ── prometheus ───────────────────────────────────────────────────────────────
+  prometheus-${s}:
+    image: prom/prometheus:v2.48.0
+    restart: unless-stopped
+    ports:
+      - '${p_prometheus}:9090'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    volumes:
+      - ${rel_inst}/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_${s}_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=200h'
+      - '--web.enable-lifecycle'
+    healthcheck:
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost:9090/-/healthy']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── grafana ───────────────────────────────────────────────────────────────────
+  grafana-${s}:
+    image: grafana/grafana:10.2.0
+    restart: unless-stopped
+    ports:
+      - '${p_grafana}:3000'
+    volumes:
+      - grafana_${s}_data:/var/lib/grafana
+      - ${rel_inst}/grafana/datasources:/etc/grafana/provisioning/datasources:ro
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=http://localhost:${p_grafana}
+    depends_on:
+      - prometheus-${s}
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --quiet --tries=1 --spider http://localhost:3000/api/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── webhook ───────────────────────────────────────────────────────────────────
+  zksync-webhook-db-${s}:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: zksync_webhook_db
+    volumes:
+      - zksync_webhook_db_${s}_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d zksync_webhook_db']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  zksync-webhook-service-${s}:
+    image: quay.io/matterlabs_enterprise/webhook-service:v0.1.19
+    platform: linux/amd64
+    init: true
+    restart: unless-stopped
+    depends_on:
+      zksync-webhook-db-${s}:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: zksync-webhook-db-${s}
+      DATABASE_PORT: '5432'
+      DATABASE_NAME: zksync_webhook_db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: password
+      DATABASE_ENABLE_SSL: 'false'
+      DATABASE_SSL_REJECT_UNAUTHORIZED: 'true'
+      ZKSYNC_WEBHOOK_CONFIG: /app/config/config.prividium.local.toml
+      RUST_LOG: info
+      ENCRYPTION_KEY: a40c350fed393623dfaa54d93d96addcbf8ae845e4f1b6eeaeb444aa3645e800
+      ENCRYPTION_KDF_SALT: zksync-webhook-service:keycipher:v2
+      PRIVIDIUM_SIGNER_KEY: ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+      PRIVIDIUM_RPC_URL: http://host.docker.internal:${p_zksyncos}
+      PRIVIDIUM_PERMISSIONS_API: http://host.docker.internal:${p_api}
+      PRIVIDIUM_SIWE_DOMAIN: http://host.docker.internal:${p_admin}
+      ZKSYNC_WEBHOOK_API_CORS_ALLOW_ORIGIN: http://localhost:${p_admin}
+      ZKSYNC_WEBHOOK_ALLOW_HTTP_LOCALHOST: 'true'
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    ports:
+      - '${p_webhook_api}:8080'
+      - '${p_webhook_int}:8081'
+
+  # ── bundler (ERC-4337) ────────────────────────────────────────────────────────
+  bridge-funds-${s}:
+    image: node:22-slim
+    working_dir: /app
+    volumes:
+      - ${rel_configs}/bundler/contracts:/app
+      - bridge_funds_${s}_node_modules:/app/node_modules
+    environment:
+      L1_RPC_URL: http://l1:5010
+      L2_RPC_URL: http://zksyncos-${s}:${zksyncos_int_port}
+      PRIVATE_KEY: '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba'
+    command: sh -c "corepack enable && pnpm install && pnpm tsx scripts/bridge-funds.ts"
+    depends_on:
+      zksyncos-${s}:
+        condition: service_healthy
+
+  entrypoint-deployer-${s}:
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: ''
+    user: 'root'
+    volumes:
+      - ${rel_configs}/bundler/contracts/entrypoint:/app
+    working_dir: /app
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    environment:
+      RPC_URL: http://zksyncos-${s}:${zksyncos_int_port}
+      PRIVATE_KEY: '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba'
+    command: >
+      sh -c "forge soldeer install && ./script/deploy.sh"
+    depends_on:
+      bridge-funds-${s}:
+        condition: service_completed_successfully
+
+  bundler-${s}:
+    image: quay.io/matterlabs_enterprise/prividium-bundler:v1.162.1
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - '${p_bundler}:4337'
+    environment:
+      BUNDLER_PORT: '4337'
+      SEQUENCER_RPC_URL: http://zksyncos-${s}:${zksyncos_int_port}
+      BUNDLER_EXECUTOR_PRIVATE_KEYS: '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba'
+      BUNDLER_UTILITY_PRIVATE_KEY: '0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba'
+      BUNDLER_ENTRYPOINTS: '0x4337084D9E255Ff0702461CF8895CE9E3b5Ff108'
+      BUNDLER_MIN_BALANCE: '0'
+      BUNDLER_NETWORK_NAME: 'local'
+      BUNDLER_LOG_LEVEL: 'info'
+    depends_on:
+      entrypoint-deployer-${s}:
+        condition: service_completed_successfully
+
 volumes:
   zksyncos_${s}_db:
+  prometheus_${s}_data:
+  grafana_${s}_data:
+  zksync_webhook_db_${s}_data:
+  bridge_funds_${s}_node_modules:
 EOF
   log "Generated $out"
 }
@@ -708,6 +910,8 @@ main() {
       "$(( 3010 + offset ))" \
       "$(( 3001 + offset ))" \
       "$(( 8000 + offset ))"
+    generate_prometheus_config "$i" "$chain_id" "$(( 9091 + offset ))"
+    generate_grafana_config "$i" "$chain_id"
     generate_prividium_deps "$i"
     generate_prividium_main "$i"
   done

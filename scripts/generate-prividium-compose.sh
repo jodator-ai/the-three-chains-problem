@@ -193,77 +193,123 @@ generate_keycloak_realm() {
   mkdir -p "$out_dir"
   local -r out="$out_dir/realm-export.json"
 
-  python3 - "$out" <<PYEOF
+  python3 - "$out" "${p_admin}" "${p_user}" "${p_explorer_api}" "${p_explorer_app}" "${p_keycloak}" <<'PYEOF'
 import json, sys
+out, p_admin, p_user, p_explorer_api, p_explorer_app, p_keycloak = sys.argv[1:]
 realm = {
-  "realm": "prividium",
-  "enabled": True,
-  "loginWithEmailAllowed": True,
-  "resetPasswordAllowed": True,
-  "bruteForceProtected": True,
-  "accessTokenLifespan": 3600,
-  "clients": [{
-    "clientId": "prividium-client",
+    "id": "prividium",
+    "realm": "prividium",
     "enabled": True,
-    "publicClient": True,
-    "standardFlowEnabled": True,
-    "implicitFlowEnabled": False,
-    "directAccessGrantsEnabled": True,
-    "redirectUris": [
-      "http://localhost:${p_admin}/*",
-      "http://localhost:${p_user}/*",
-      "http://localhost:${p_explorer_api}/*",
-      "http://localhost:${p_explorer_app}/*",
-      "http://localhost:${p_keycloak}/*",
-      "http://localhost:4000/*",
-      "http://localhost:5173/*"
+    "sslRequired": "none",
+    "registrationAllowed": False,
+    "loginWithEmailAllowed": True,
+    "duplicateEmailsAllowed": False,
+    "resetPasswordAllowed": True,
+    "editUsernameAllowed": False,
+    "bruteForceProtected": True,
+    "accessTokenLifespan": 3600,
+    "ssoSessionIdleTimeout": 3600,
+    "ssoSessionMaxLifespan": 36000,
+    "offlineSessionIdleTimeout": 2592000,
+    "accessCodeLifespan": 60,
+    "accessCodeLifespanUserAction": 300,
+    "accessCodeLifespanLogin": 1800,
+    "clients": [
+        {
+            "clientId": "prividium-client",
+            "name": "Prividium Local Development",
+            "description": "OAuth client for Prividium local testing",
+            "enabled": True,
+            "clientAuthenticatorType": "client-secret",
+            "secret": "prividium-local-secret",
+            "redirectUris": [
+                "http://localhost:{}/*".format(p_admin),
+                "http://localhost:{}/*".format(p_user),
+                "http://localhost:{}/*".format(p_explorer_api),
+                "http://localhost:{}/*".format(p_explorer_app),
+                "http://localhost:{}/*".format(p_keycloak),
+                "http://localhost:4000/*",
+                "http://localhost:5173/*"
+            ],
+            "webOrigins": ["+"],
+            "protocol": "openid-connect",
+            "publicClient": True,
+            "standardFlowEnabled": True,
+            "implicitFlowEnabled": False,
+            "directAccessGrantsEnabled": True,
+            "serviceAccountsEnabled": False,
+            "attributes": {
+                "pkce.code.challenge.method": "S256",
+                "access.token.lifespan": "3600",
+                "post.logout.redirect.uris": "+"
+            },
+            "protocolMappers": [
+                {
+                    "name": "email",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-property-mapper",
+                    "consentRequired": False,
+                    "config": {
+                        "userinfo.token.claim": "true",
+                        "user.attribute": "email",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "email",
+                        "jsonType.label": "String"
+                    }
+                },
+                {
+                    "name": "preferred_username",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-property-mapper",
+                    "consentRequired": False,
+                    "config": {
+                        "userinfo.token.claim": "true",
+                        "user.attribute": "username",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "preferred_username",
+                        "jsonType.label": "String"
+                    }
+                }
+            ]
+        }
     ],
-    "webOrigins": ["+"],
-    "attributes": {"pkce.code.challenge.method": "S256"},
-    "protocolMappers": [
-      {
-        "name": "email", "protocol": "openid-connect",
-        "protocolMapper": "oidc-usermodel-property-mapper",
-        "config": {
-          "user.attribute": "email", "claim.name": "email",
-          "jsonType.label": "String",
-          "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true"
+    "roles": {
+        "realm": [
+            {"name": "admin", "description": "Administrator role"},
+            {"name": "user", "description": "Regular user role"}
+        ]
+    },
+    "users": [
+        {
+            "id": "00000000-0000-0000-0000-000000000001",
+            "username": "admin@local.dev", "email": "admin@local.dev",
+            "emailVerified": True, "enabled": True,
+            "firstName": "Admin", "lastName": "User",
+            "credentials": [{"type": "password", "value": "password", "temporary": False}],
+            "realmRoles": ["admin", "user"]
+        },
+        {
+            "id": "00000000-0000-0000-0000-000000000002",
+            "username": "user@local.dev", "email": "user@local.dev",
+            "emailVerified": True, "enabled": True,
+            "firstName": "Regular", "lastName": "User",
+            "credentials": [{"type": "password", "value": "password", "temporary": False}],
+            "realmRoles": ["user"]
+        },
+        {
+            "id": "00000000-0000-0000-0000-000000000003",
+            "username": "test@local.dev", "email": "test@local.dev",
+            "emailVerified": True, "enabled": True,
+            "firstName": "Test", "lastName": "User",
+            "credentials": [{"type": "password", "value": "password", "temporary": False}],
+            "realmRoles": ["user"]
         }
-      },
-      {
-        "name": "preferred_username", "protocol": "openid-connect",
-        "protocolMapper": "oidc-usermodel-property-mapper",
-        "config": {
-          "user.attribute": "username", "claim.name": "preferred_username",
-          "jsonType.label": "String",
-          "id.token.claim": "true", "access.token.claim": "true", "userinfo.token.claim": "true"
-        }
-      }
     ]
-  }],
-  "roles": {
-    "realm": [{"name": "admin", "composite": False}, {"name": "user", "composite": False}]
-  },
-  "users": [
-    {
-      "username": "admin@local.dev", "email": "admin@local.dev", "enabled": True,
-      "credentials": [{"type": "password", "value": "password", "temporary": False}],
-      "realmRoles": ["admin", "user"]
-    },
-    {
-      "username": "user@local.dev", "email": "user@local.dev", "enabled": True,
-      "credentials": [{"type": "password", "value": "password", "temporary": False}],
-      "realmRoles": ["user"]
-    },
-    {
-      "username": "test@local.dev", "email": "test@local.dev", "enabled": True,
-      "credentials": [{"type": "password", "value": "password", "temporary": False}],
-      "realmRoles": ["user"]
-    }
-  ]
 }
-with open(sys.argv[1], "w") as f:
-    json.dump(realm, f, indent=2)
+with open(out, "w") as f:
+    json.dump(realm, f, indent=4)
 PYEOF
   log "Generated $out  (keycloak realm, chain_id=$chain_id)"
 }

@@ -15,8 +15,13 @@ services:
 
   # ── prividium-api ────────────────────────────────────────────────────────────
   prividium-api-6567:
-    image: quay.io/matterlabs_enterprise/prividium-permissions-api:v1.153.1
-    platform: linux/amd64
+    ## REMOVE PUBLIC:START
+    build:
+      context: .
+      dockerfile: ./apps/permissions-api/Dockerfile
+    ## REMOVE PUBLIC:END
+    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-permissions-api:v1.153.1
+    ## PUBLIC:platform: linux/amd64
     restart: unless-stopped
     depends_on:
       postgres:
@@ -53,8 +58,13 @@ services:
 
   # ── admin panel ──────────────────────────────────────────────────────────────
   admin-panel-6567:
-    image: quay.io/matterlabs_enterprise/prividium-adminv2:v1.153.1
-    platform: linux/amd64
+    ## REMOVE PUBLIC:START
+    build:
+      context: .
+      dockerfile: ./apps/adminv2/Dockerfile
+    ## REMOVE PUBLIC:END
+    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-adminv2:v1.153.1
+    ## PUBLIC:platform: linux/amd64
     restart: unless-stopped
     environment:
       - VITE_PRIVIDIUM_API_URL=http://localhost:8400
@@ -68,8 +78,13 @@ services:
 
   # ── user panel ───────────────────────────────────────────────────────────────
   user-panel-6567:
-    image: quay.io/matterlabs_enterprise/prividium-user-panel:v1.153.1
-    platform: linux/amd64
+    ## REMOVE PUBLIC:START
+    build:
+      context: .
+      dockerfile: ./apps/user-panel/Dockerfile
+    ## REMOVE PUBLIC:END
+    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-user-panel:v1.153.1
+    ## PUBLIC:platform: linux/amd64
     restart: unless-stopped
     environment:
       - VITE_OIDC_AUTHORITY=http://localhost:5480/realms/prividium

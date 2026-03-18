@@ -417,8 +417,13 @@ services:
 
   # ── prividium-api ────────────────────────────────────────────────────────────
   prividium-api-${s}:
-    image: quay.io/matterlabs_enterprise/prividium-permissions-api:${prividium_version}
-    platform: linux/amd64
+    ## REMOVE PUBLIC:START
+    build:
+      context: .
+      dockerfile: ./apps/permissions-api/Dockerfile
+    ## REMOVE PUBLIC:END
+    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-permissions-api:${prividium_version}
+    ## PUBLIC:platform: linux/amd64
     restart: unless-stopped
     depends_on:
       postgres:
@@ -455,8 +460,13 @@ services:
 
   # ── admin panel ──────────────────────────────────────────────────────────────
   admin-panel-${s}:
-    image: quay.io/matterlabs_enterprise/prividium-adminv2:${prividium_version}
-    platform: linux/amd64
+    ## REMOVE PUBLIC:START
+    build:
+      context: .
+      dockerfile: ./apps/adminv2/Dockerfile
+    ## REMOVE PUBLIC:END
+    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-adminv2:${prividium_version}
+    ## PUBLIC:platform: linux/amd64
     restart: unless-stopped
     environment:
       - VITE_PRIVIDIUM_API_URL=http://localhost:${p_api}
@@ -470,8 +480,13 @@ services:
 
   # ── user panel ───────────────────────────────────────────────────────────────
   user-panel-${s}:
-    image: quay.io/matterlabs_enterprise/prividium-user-panel:${prividium_version}
-    platform: linux/amd64
+    ## REMOVE PUBLIC:START
+    build:
+      context: .
+      dockerfile: ./apps/user-panel/Dockerfile
+    ## REMOVE PUBLIC:END
+    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-user-panel:${prividium_version}
+    ## PUBLIC:platform: linux/amd64
     restart: unless-stopped
     environment:
       - VITE_OIDC_AUTHORITY=${kc_host}/realms/prividium
@@ -501,6 +516,37 @@ EOF
   log "Generated $out"
 }
 
+# ── start.sh (thin wrapper — passes args to docker compose) ───────────────────
+generate_start_sh() {
+  local compose_args=""
+  local i chain_id
+  for i in $(seq 1 "$count"); do
+    chain_id=$(( BASE_CHAIN_ID + i ))
+    [[ -n "$compose_args" ]] \
+      && compose_args="$compose_args -f docker-compose-${chain_id}.yaml" \
+      || compose_args="-f docker-compose-${chain_id}.yaml"
+  done
+
+  local -r out="$output_dir/start.sh"
+  cat > "$out" <<EOF
+#!/usr/bin/env bash
+# Auto-generated — starts all Prividium instances in this directory.
+# Usage:  ./start.sh           — runs: docker compose ... up -d
+#         ./start.sh down      — tears down
+#         ./start.sh logs -f   — follows logs
+#         ./start.sh <any docker compose subcommand>
+set -euo pipefail
+cd "\$(dirname "\$0")"
+if [[ \$# -eq 0 ]]; then
+  exec docker compose $compose_args up -d
+else
+  exec docker compose $compose_args "\$@"
+fi
+EOF
+  chmod +x "$out"
+  log "Generated $out"
+}
+
 # ── main ──────────────────────────────────────────────────────────────────────
 main() {
   generate_l1
@@ -519,6 +565,8 @@ main() {
     generate_prividium_deps "$i"
     generate_prividium_main "$i"
   done
+
+  generate_start_sh
 
   log "Done. $count prividium stack(s) written to: $output_dir"
 }

@@ -318,26 +318,28 @@ PYEOF
 generate_explorer_config() {
   local -r instance_num="$1"
   local -r chain_id="$2"
-  local -r api_port="$3"
+  local -r explorer_api_port="$3"
   local -r explorer_app_port="$4"
   local -r user_panel_port="$5"
+  local -r prividium_api_port="$6"
 
   local -r out_dir="$configs_abs/prividium-${instance_num}/block-explorer"
   mkdir -p "$out_dir"
   cat > "$out_dir/block-explorer-config.js" <<EOF
 window['##runtimeConfig'] = {
-  "appEnvironment": "prividium",
-  "environmentConfig": {
-    "networks": [{
-      "apiUrl": "http://localhost:${api_port}",
-      "hostnames": ["localhost:${explorer_app_port}"],
-      "rpcUrl": "http://localhost:${api_port}/rpc",
-      "l2ChainId": ${chain_id},
-      "l2NetworkName": "Prividium Local (${chain_id})",
-      "baseTokenAddress": "0x000000000000000000000000000000000000800A",
-      "l2WalletUrl": "http://localhost:${user_panel_port}",
-      "published": true,
-      "maintenance": false
+  appEnvironment: 'prividium',
+  environmentConfig: {
+    networks: [{
+      apiUrl: 'http://localhost:${explorer_api_port}',
+      hostnames: ['localhost:${explorer_app_port}'],
+      rpcUrl: 'http://localhost:${prividium_api_port}/rpc',
+      l2ChainId: ${chain_id},
+      l2NetworkName: 'Prividium Local (${chain_id})',
+      baseTokenAddress: '0x000000000000000000000000000000000000800A',
+      prividium: true,
+      userPanelUrl: 'http://localhost:${user_panel_port}',
+      published: true,
+      maintenance: false
     }]
   }
 };
@@ -704,7 +706,8 @@ main() {
       "$i" "$chain_id" \
       "$(( 3002 + offset ))" \
       "$(( 3010 + offset ))" \
-      "$(( 3001 + offset ))"
+      "$(( 3001 + offset ))" \
+      "$(( 8000 + offset ))"
     generate_prividium_deps "$i"
     generate_prividium_main "$i"
   done

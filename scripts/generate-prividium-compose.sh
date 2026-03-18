@@ -223,9 +223,8 @@ generate_prividium_deps() {
   local -r s="${chain_id}"
   local -r kc_host="http://localhost:${p_keycloak}"
 
-  local -r cfg_subdir="$configs_abs/prividium-${chain_id}"
-  local rel_cfg_subdir
-  rel_cfg_subdir="$(python3 -c "import os,sys; p=os.path.relpath(sys.argv[1], sys.argv[2]); print(p if p.startswith('.') else './'+p)" "$cfg_subdir" "$output_abs")"
+  local -r cfg_subdir="$configs_abs/${chain_id}"
+  local -r rel_cfg_subdir="${rel_configs}/${chain_id}"
 
   local -r out="$output_dir/docker-compose-deps-${chain_id}.yaml"
 
@@ -255,7 +254,7 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${chain_id}.yaml']
     volumes:
       - zksyncos_${s}_db:/db
-      - ${rel_configs}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
+      - ${rel_configs}/${chain_id}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
       - ${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
     depends_on:
       l1:
@@ -554,7 +553,7 @@ main() {
   local i
   for i in $(seq 1 "$count"); do
     local chain_id=$(( BASE_CHAIN_ID + i ))
-    local cfg_subdir="$configs_abs/prividium-${chain_id}"
+    local cfg_subdir="$configs_abs/${chain_id}"
     local offset=$(( (i - 1) * PORT_STRIDE ))
     generate_explorer_config \
       "$chain_id" \

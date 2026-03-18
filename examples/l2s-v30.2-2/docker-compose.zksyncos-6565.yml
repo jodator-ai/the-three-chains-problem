@@ -16,8 +16,8 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_6565.yaml']
     volumes:
       - zksyncos_6565_db:/db
-      - ./chain_6565.yaml:/configs/chain_6565.yaml:ro
-      - ./genesis.json:/app/local-chains/v30.2/genesis.json:ro
+      - ./dev/6565/chain_6565.yaml:/configs/chain_6565.yaml:ro
+      - ./dev/genesis.json:/app/local-chains/v30.2/genesis.json:ro
     depends_on:
       l1:
         condition: service_healthy

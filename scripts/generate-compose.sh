@@ -145,7 +145,7 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${GATEWAY_CHAIN_ID}.yaml']
     volumes:
       - gateway_${GATEWAY_CHAIN_ID}_db:/db
-      - ${rel_configs}/chain_${GATEWAY_CHAIN_ID}.yaml:/configs/chain_${GATEWAY_CHAIN_ID}.yaml:ro
+      - ${rel_configs}/${GATEWAY_CHAIN_ID}/chain_${GATEWAY_CHAIN_ID}.yaml:/configs/chain_${GATEWAY_CHAIN_ID}.yaml:ro
       - ${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
       - ${rel_configs}/gateway-db.tar.gz:/app/local-chains/${version}/gateway-db.tar.gz:ro
     depends_on:
@@ -201,7 +201,7 @@ services:
     command: ['/usr/bin/tini', '--', 'zksync-os-server', '--config', '/configs/chain_${chain_id}.yaml']
     volumes:
       - ${db_vol}:/db
-      - ${rel_configs}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
+      - ${rel_configs}/${chain_id}/chain_${chain_id}.yaml:/configs/chain_${chain_id}.yaml:ro
       - ${rel_configs}/genesis.json:/app/local-chains/${version}/genesis.json:ro
     depends_on:
       l1:

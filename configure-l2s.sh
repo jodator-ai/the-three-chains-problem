@@ -250,6 +250,7 @@ ensure_gateway_db() {
 # ── step: generate compose files ─────────────────────────────────────────────
 generate_compose_files() {
   local -r out_dir="$1"
+  local -r dev_dir="$2"
   local gateway_flag=""
   [[ "$gateway" == true ]] && gateway_flag="--gateway"
 
@@ -257,7 +258,7 @@ generate_compose_files() {
   "$SCRIPT_DIR/scripts/generate-compose.sh" \
     --count="$count" \
     --output-dir="$out_dir" \
-    --configs-dir="$out_dir" \
+    --configs-dir="$dev_dir" \
     --version="$version" \
     --server-image="$server_image" \
     --l1-image="$l1_image" \
@@ -309,6 +310,8 @@ main() {
   rm -rf "$output"
   mkdir -p "$output"
   local -r out_dir="$(python3 -c "import os,sys; print(os.path.realpath(sys.argv[1]))" "$output")"
+  local -r dev_dir="$out_dir/dev"
+  mkdir -p "$dev_dir"
 
   local mode_label="$version, L1 settlement"
   [[ "$gateway" == true ]] && mode_label="$version, gateway mode"
@@ -316,11 +319,22 @@ main() {
   echo ""
 
   check_genesis_requirement "$prebuilt_max"
-  ensure_l1_state "$out_dir/l1-state.json.gz"
-  generate_chain_configs "$out_dir"
-  ensure_genesis_json "$out_dir/genesis.json"
-  [[ "$gateway" == true ]] && ensure_gateway_db "$out_dir/gateway-db.tar.gz"
-  generate_compose_files "$out_dir"
+  ensure_l1_state "$dev_dir/l1-state.json.gz"
+  generate_chain_configs "$dev_dir"
+  # Move each chain config into its own per-chain subdir
+  local i chain_id
+  for i in $(seq 1 "$count"); do
+    chain_id=$(( BASE_CHAIN_ID + i ))
+    mkdir -p "$dev_dir/$chain_id"
+    mv "$dev_dir/chain_${chain_id}.yaml" "$dev_dir/$chain_id/"
+  done
+  if [[ "$gateway" == true ]]; then
+    mkdir -p "$dev_dir/$GATEWAY_CHAIN_ID"
+    mv "$dev_dir/chain_${GATEWAY_CHAIN_ID}.yaml" "$dev_dir/$GATEWAY_CHAIN_ID/"
+  fi
+  ensure_genesis_json "$dev_dir/genesis.json"
+  [[ "$gateway" == true ]] && ensure_gateway_db "$dev_dir/gateway-db.tar.gz"
+  generate_compose_files "$out_dir" "$dev_dir"
 
   echo ""
   echo -e "${GREEN}${BOLD}✓ Configuration complete!${NC}"

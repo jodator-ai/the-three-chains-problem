@@ -259,10 +259,11 @@ def init_multi_chain_ecosystem(
         cwd=ecosystem_dir,
     )
 
-    # Remove default era chain (non zksync-os), then create our chains
-    chains_dir = ecosystem_dir / "chains"
-    if chains_dir.exists():
-        shutil.rmtree(chains_dir)
+    # Remove the default tmp_chain (EraVM, not zksync-os) but keep the chains/ dir itself —
+    # zkstack panics if chains/ doesn't exist when chain create is called.
+    tmp_chain_dir = ecosystem_dir / "chains" / "tmp_chain"
+    if tmp_chain_dir.exists():
+        shutil.rmtree(tmp_chain_dir)
 
     for chain_id in chain_ids:
         print(f"  Creating chain {chain_id}...")

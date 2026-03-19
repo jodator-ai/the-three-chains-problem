@@ -208,6 +208,7 @@ def init_multi_chain_ecosystem(
     sh(
         f"""
         {zkstack_bin}
+          --ignore-prerequisites
           ecosystem create
           --ecosystem-name {ecosystem_name}
           --l1-network localhost
@@ -230,6 +231,7 @@ def init_multi_chain_ecosystem(
     sh(
         f"""
         {zkstack_bin}
+          --ignore-prerequisites
           ctm set-ctm-contracts
           --contracts-src-path {era_contracts_path}
           --default-configs-src-path {era_contracts_path}/etc/env/file_based
@@ -248,6 +250,7 @@ def init_multi_chain_ecosystem(
         sh(
             f"""
             {zkstack_bin}
+              --ignore-prerequisites
               chain create
               --chain-name {chain_id}
               --chain-id {chain_id}
@@ -303,6 +306,7 @@ def init_multi_chain_ecosystem(
         sh(
             f"""
             {zkstack_bin}
+              --ignore-prerequisites
               ecosystem init
               --deploy-paymaster=false
               --deploy-erc20=false

@@ -51,7 +51,8 @@ def sh(cmd: str, cwd: Path | None = None, env: dict | None = None) -> None:
         env=merged_env,
     )
     if result.returncode != 0:
-        print(f"ERROR: Command failed with exit code {result.returncode}:\n\t{cmd.replace(' --', chr(10) + '\t  --')}", file=sys.stderr)
+        formatted = cmd.replace(" --", "\n\t  --")
+        print(f"ERROR: Command failed with exit code {result.returncode}:\n\t{formatted}", file=sys.stderr)
         sys.exit(result.returncode)
 
 

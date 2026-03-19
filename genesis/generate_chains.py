@@ -391,29 +391,45 @@ def main() -> None:
     workspace = output_dir / ".workspace"
     workspace.mkdir(parents=True, exist_ok=True)
 
+    # When GENESIS_PREBUILT=1, binaries are already compiled in the Docker image —
+    # skip the expensive build steps (1 and 2) to avoid rebuilding from scratch.
+    skip_build = os.environ.get("GENESIS_PREBUILT", "0") == "1"
+
     print(f"\n=== ZKsync OS Genesis Generator ===")
     print(f"Chain IDs:        {chain_ids}")
     print(f"Protocol version: {version}")
     print(f"Output directory: {output_dir}")
+    if skip_build:
+        print(f"Mode:             pre-built image (skipping compilation)")
     print()
 
-    # Step 1: Build contracts
-    print("[1/4] Building era-contracts...")
-    sh("yarn install", cwd=era_contracts_path)
-    sh("yarn build:foundry", cwd=era_contracts_path / "da-contracts")
-    sh("yarn build:foundry", cwd=era_contracts_path / "l1-contracts")
+    if not skip_build:
+        # Step 1: Build contracts
+        print("[1/4] Building era-contracts...")
+        sh("yarn install", cwd=era_contracts_path)
+        sh("yarn build:foundry", cwd=era_contracts_path / "da-contracts")
+        sh("yarn build:foundry", cwd=era_contracts_path / "l1-contracts")
 
-    # Step 2: Build zkstack CLI
-    print("[2/4] Building zkstack CLI...")
-    sh("cargo build --release --bin zkstack", cwd=zksync_era_path / "zkstack_cli")
+        # Step 2: Build zkstack CLI
+        print("[2/4] Building zkstack CLI...")
+        sh("cargo build --release --bin zkstack", cwd=zksync_era_path / "zkstack_cli")
+    else:
+        print("[1/4] Skipped (pre-built image)")
+        print("[2/4] Skipped (pre-built image)")
 
     # Step 3: Generate genesis.json
-    print("[3/4] Generating genesis.json...")
-    # Get execution_version from the protocol version mapping
-    # For v30.2, execution_version = "30.2"
-    execution_version = version.lstrip("v")
+    # If GENESIS_JSON_CACHE points to a pre-built genesis.json, reuse it.
+    genesis_cache = os.environ.get("GENESIS_JSON_CACHE", "")
     genesis_output = output_dir / "genesis.json"
-    generate_genesis_json(era_contracts_path, genesis_output, execution_version)
+    if genesis_cache and Path(genesis_cache).exists():
+        print(f"[3/4] Using cached genesis.json from {genesis_cache}")
+        shutil.copy(genesis_cache, genesis_output)
+    else:
+        print("[3/4] Generating genesis.json...")
+        # Get execution_version from the protocol version mapping
+        # For v30.2, execution_version = "30.2"
+        execution_version = version.lstrip("v")
+        generate_genesis_json(era_contracts_path, genesis_output, execution_version)
 
     # Step 4: Initialize ecosystem and deploy L1 contracts
     print("[4/4] Initializing ecosystem and deploying L1 contracts...")

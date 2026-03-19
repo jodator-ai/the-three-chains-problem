@@ -3,101 +3,139 @@
 # This Docker image provides a self-contained environment for generating
 # ZKsync OS chain configurations and L1 state for N L2 chains.
 #
+# All heavy compilation (Rust, Solidity/foundry) happens at IMAGE BUILD TIME.
+# At runtime, only the fast Anvil-based deployment runs (~2-3 min).
+#
 # Build:
 #   docker build --build-arg PROTOCOL_VERSION=v30.2 -t zksync-genesis-generator:v30.2 .
 #
 # Run:
 #   docker run --rm -v /path/to/output:/output zksync-genesis-generator:v30.2 \
 #     --chain-ids 6565,6566,6567 --output /output
-#
-# Note: First build takes 20-40 minutes due to Rust compilation.
 
+# ── Stage 1: Compile zkstack CLI ───────────────────────────────────────────────
+# Use the official Rust image to avoid installing Rust from scratch.
+FROM rust:1.82 AS zkstack-builder
+
+ARG ZKSTACK_TAG=protocol-upgrade-v1.3.1
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 --branch ${ZKSTACK_TAG} \
+    https://github.com/matter-labs/zksync-era.git /zksync-era
+
+WORKDIR /zksync-era/zkstack_cli
+RUN cargo build --release --bin zkstack
+
+# Strip binary to reduce size
+RUN strip target/release/zkstack
+
+# ── Stage 2: Build era-contracts + genesis-gen ────────────────────────────────
+FROM rust:1.82 AS contracts-builder
+
+ARG ERA_CONTRACTS_TAG=zkos-v0.30.2
+ARG PROTOCOL_VERSION=v30.2
+
+RUN apt-get update && apt-get install -y \
+    git curl pkg-config libssl-dev python3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Node.js 22 + yarn
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y nodejs && rm -rf /var/lib/apt/lists/* && \
+    npm install -g yarn
+
+# Install foundry-zksync (required for `forge build --zksync` in era-contracts)
+RUN curl -sSfL https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/foundryup-zksync/install | bash && \
+    /root/.foundry/bin/foundryup-zksync && \
+    ln -sf /root/.foundry/bin/forge /usr/local/bin/forge && \
+    ln -sf /root/.foundry/bin/cast  /usr/local/bin/cast
+
+RUN git clone --depth 1 --branch ${ERA_CONTRACTS_TAG} \
+    --recurse-submodules --shallow-submodules \
+    https://github.com/matter-labs/era-contracts.git /era-contracts
+
+# Build Solidity contracts (needed by zkstack at deployment time)
+WORKDIR /era-contracts
+RUN yarn install --frozen-lockfile
+RUN cd da-contracts  && yarn build:foundry
+RUN cd l1-contracts  && yarn build:foundry
+
+# Build and run genesis-gen to produce genesis.json at image-build time.
+# genesis.json is deterministic per protocol version — no need to regenerate at runtime.
+# Using `cargo run --release` avoids hardcoding the binary name from Cargo.toml.
+WORKDIR /era-contracts/tools/zksync-os-genesis-gen
+RUN EXEC_VER="${PROTOCOL_VERSION#v}" && \
+    mkdir -p /prebuilt && \
+    cargo run --release -- \
+        --output-file /prebuilt/genesis.json \
+        --execution-version "$EXEC_VER"
+
+# Remove intermediate build artifacts to reduce layer size (keep compiled outputs)
+RUN find /era-contracts -name "*.o" -delete && \
+    find /era-contracts/tools -maxdepth 3 -name "deps" -type d -exec rm -rf {} + 2>/dev/null || true
+
+# Remove .git to save space
+RUN find /era-contracts -name ".git" -type d -maxdepth 2 -exec rm -rf {} + 2>/dev/null || true
+
+# ── Stage 3: Runtime image ────────────────────────────────────────────────────
 FROM ubuntu:22.04
 
 ARG PROTOCOL_VERSION=v30.2
+ENV PROTOCOL_VERSION=${PROTOCOL_VERSION}
 
-# Build metadata
 LABEL org.opencontainers.image.title="ZKsync OS Genesis Generator"
 LABEL org.opencontainers.image.description="Generates multi-chain genesis configs for ZKsync OS"
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    build-essential \
     curl \
-    git \
-    pkg-config \
-    libssl-dev \
     python3 \
     python3-pip \
-    python3-venv \
-    wget \
-    jq \
     gzip \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Rust
-ENV RUSTUP_HOME=/usr/local/rustup
-ENV CARGO_HOME=/usr/local/cargo
-ENV PATH=/usr/local/cargo/bin:$PATH
-
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --no-modify-path
-
-# Install Node.js 22 (for yarn)
+# Install Node.js 22 + yarn (needed for zkstack chain create at runtime)
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
-    apt-get install -y nodejs && \
-    npm install -g yarn corepack
+    apt-get install -y nodejs && rm -rf /var/lib/apt/lists/* && \
+    npm install -g yarn
 
-# Install Foundry-ZKsync (required for `forge build --zksync` in era-contracts)
-# Standard foundry does not have --zksync support; era-contracts l1-contracts
-# needs forge build --zksync to produce zkEVM artifacts used by zkstack for
-# L1 contract deployment.
+# Install foundry-zksync anvil + cast (needed for anvil_dumpState at runtime)
 RUN curl -sSfL https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/foundryup-zksync/install | bash && \
     /root/.foundry/bin/foundryup-zksync && \
-    ln -s /root/.foundry/bin/anvil /usr/local/bin/anvil && \
-    ln -s /root/.foundry/bin/cast  /usr/local/bin/cast  && \
-    ln -s /root/.foundry/bin/forge /usr/local/bin/forge && \
-    forge --version
+    ln -sf /root/.foundry/bin/anvil /usr/local/bin/anvil && \
+    ln -sf /root/.foundry/bin/cast  /usr/local/bin/cast
 
-# Clone era-contracts at the correct tag for the protocol version
-# Tag from local-chains/v30.2/versions.yaml: era-contracts tag = zkos-v0.30.2
-ARG ERA_CONTRACTS_TAG=zkos-v0.30.2
-RUN git clone --depth 1 --branch ${ERA_CONTRACTS_TAG} \
-    --recurse-submodules --shallow-submodules \
-    https://github.com/matter-labs/era-contracts.git /era-contracts
+# Copy compiled zkstack binary
+COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/release/zkstack /usr/local/bin/zkstack
 
-# Clone zksync-era (for zkstack CLI)
-# Tag from versions.yaml: zkstack-cli tag = protocol-upgrade-v1.3.1
-ARG ZKSTACK_TAG=protocol-upgrade-v1.3.1
-RUN git clone --depth 1 --branch ${ZKSTACK_TAG} \
-    https://github.com/matter-labs/zksync-era.git /zksync-era
+# Copy era-contracts (source + compiled artifacts are needed by zkstack at runtime)
+COPY --from=contracts-builder /era-contracts /era-contracts
 
-# Pre-build era-contracts
-WORKDIR /era-contracts
-RUN yarn install --frozen-lockfile || yarn install
-RUN yarn build:foundry --cwd da-contracts 2>/dev/null || (cd da-contracts && yarn build:foundry)
-RUN yarn build:foundry --cwd l1-contracts 2>/dev/null || (cd l1-contracts && yarn build:foundry)
+# Copy zksync-era source (zkstack --link-to-code requires it at runtime).
+# Exclude the Rust target/ directory — we only need the sources + zkstack binary.
+COPY --from=zkstack-builder /zksync-era /zksync-era
+# Remove the Rust build cache to keep runtime image lean
+RUN rm -rf /zksync-era/zkstack_cli/target /zksync-era/target 2>/dev/null || true
 
-# Pre-build zkstack CLI
-WORKDIR /zksync-era/zkstack_cli
-RUN cargo build --release --bin zkstack
+# Copy pre-built genesis.json
+COPY --from=contracts-builder /prebuilt/genesis.json /prebuilt/genesis.json
 
-# Pre-build the genesis generator
-WORKDIR /era-contracts
-RUN cargo build --release --package zksync_os_generate_deposit 2>/dev/null || true
-
-# Install Python dependencies for generate_chains.py
-RUN pip3 install pyyaml packaging
+# Install Python deps
+RUN pip3 install pyyaml
 
 # Copy genesis generator script
 COPY generate_chains.py /usr/local/bin/generate_chains.py
 RUN chmod +x /usr/local/bin/generate_chains.py
 
-# Set environment variables for the generator
+# Tell generate_chains.py to skip the build steps (already done above)
+ENV GENESIS_PREBUILT=1
+# Point to the pre-built genesis.json
+ENV GENESIS_JSON_CACHE=/prebuilt/genesis.json
+
 ENV ERA_CONTRACTS_PATH=/era-contracts
 ENV ZKSYNC_ERA_PATH=/zksync-era
-ENV PROTOCOL_VERSION=${PROTOCOL_VERSION}
 
 WORKDIR /workspace
 

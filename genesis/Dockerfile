@@ -65,7 +65,7 @@ RUN cd l1-contracts  && yarn build:foundry
 # genesis.json is deterministic per protocol version — no need to regenerate at runtime.
 # Using `cargo run --release` avoids hardcoding the binary name from Cargo.toml.
 WORKDIR /era-contracts/tools/zksync-os-genesis-gen
-RUN EXEC_VER="${PROTOCOL_VERSION#v}" && \
+RUN EXEC_VER="${PROTOCOL_VERSION#v}" && EXEC_VER="${EXEC_VER%%.*}" && \
     mkdir -p /prebuilt && \
     cargo run --release -- \
         --output-file /prebuilt/genesis.json \

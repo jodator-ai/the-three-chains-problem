@@ -386,6 +386,10 @@ def main() -> None:
     zksync_era_path    = require_path("ZKSYNC_ERA_PATH")
     protocol_version   = require_env("PROTOCOL_VERSION")
 
+    # When GENESIS_PREBUILT=1, binaries are already compiled in the Docker image —
+    # skip the expensive build steps (1 and 2) to avoid rebuilding from scratch.
+    skip_build = os.environ.get("GENESIS_PREBUILT", "0") == "1"
+
     if skip_build:
         # In the pre-built image the binary was installed to /usr/local/bin
         zkstack_bin = Path("zkstack")
@@ -394,10 +398,6 @@ def main() -> None:
 
     workspace = output_dir / ".workspace"
     workspace.mkdir(parents=True, exist_ok=True)
-
-    # When GENESIS_PREBUILT=1, binaries are already compiled in the Docker image —
-    # skip the expensive build steps (1 and 2) to avoid rebuilding from scratch.
-    skip_build = os.environ.get("GENESIS_PREBUILT", "0") == "1"
 
     print(f"\n=== ZKsync OS Genesis Generator ===")
     print(f"Chain IDs:        {chain_ids}")

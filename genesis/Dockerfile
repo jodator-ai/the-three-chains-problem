@@ -103,9 +103,10 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && rm -rf /var/lib/apt/lists/* && \
     npm install -g yarn
 
-# Install foundry-zksync anvil + cast (needed for anvil_dumpState at runtime)
-RUN curl -sSfL https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/foundryup-zksync/install | bash && \
-    /root/.foundry/bin/foundryup-zksync && \
+# Install standard foundry for anvil (L1 simulator) + cast (RPC calls at runtime).
+# foundry-zksync does not ship anvil; the standard foundry anvil is sufficient for L1 simulation.
+RUN curl -L https://foundry.paradigm.xyz | bash && \
+    /root/.foundry/bin/foundryup && \
     ln -sf /root/.foundry/bin/anvil /usr/local/bin/anvil && \
     ln -sf /root/.foundry/bin/cast  /usr/local/bin/cast
 

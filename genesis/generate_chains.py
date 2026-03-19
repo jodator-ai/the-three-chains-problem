@@ -294,19 +294,27 @@ def init_multi_chain_ecosystem(
     with tempfile.NamedTemporaryFile(suffix=".pid", delete=False) as f:
         pid_file = f.name
 
-    # Start Anvil in background
-    anvil_proc = subprocess.Popen(
-        f"anvil --port 8545 --host 127.0.0.1",
-        shell=True,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-
     import time
     import urllib.request
 
+    # Start Anvil in background, log to /tmp so we can diagnose startup failures
+    anvil_log = open("/tmp/anvil.log", "w")
+    anvil_proc = subprocess.Popen(
+        "anvil --port 8545 --host 127.0.0.1",
+        shell=True,
+        stdout=anvil_log,
+        stderr=anvil_log,
+    )
+
     print("  Waiting for Anvil...")
-    for _ in range(30):
+    anvil_ready = False
+    for _ in range(60):
+        # Bail early if anvil exited already
+        if anvil_proc.poll() is not None:
+            anvil_log.flush()
+            with open("/tmp/anvil.log") as _f:
+                print(f"  Anvil exited (rc={anvil_proc.returncode}):\n{_f.read()}", file=sys.stderr)
+            sys.exit(1)
         try:
             urllib.request.urlopen(
                 urllib.request.Request(
@@ -316,9 +324,17 @@ def init_multi_chain_ecosystem(
                 ),
                 timeout=2,
             )
+            anvil_ready = True
             break
         except Exception:
             time.sleep(1)
+
+    if not anvil_ready:
+        anvil_log.flush()
+        with open("/tmp/anvil.log") as _f:
+            print(f"  Anvil did not become ready in 60s:\n{_f.read()}", file=sys.stderr)
+        anvil_proc.terminate()
+        sys.exit(1)
 
     try:
         fund_accounts(ecosystem_dir)
@@ -385,6 +401,7 @@ def init_multi_chain_ecosystem(
 
     finally:
         anvil_proc.terminate()
+        anvil_log.close()
         try:
             os.unlink(pid_file)
         except Exception:

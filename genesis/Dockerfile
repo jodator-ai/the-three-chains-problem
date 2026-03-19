@@ -75,8 +75,9 @@ RUN EXEC_VER="${PROTOCOL_VERSION#v}" && EXEC_VER="${EXEC_VER%%.*}" && \
 RUN find /era-contracts -name "*.o" -delete && \
     find /era-contracts/tools -maxdepth 3 -name "deps" -type d -exec rm -rf {} + 2>/dev/null || true
 
-# Remove .git to save space
-RUN find /era-contracts -name ".git" -type d -maxdepth 2 -exec rm -rf {} + 2>/dev/null || true
+# Keep /era-contracts/.git — zkstack runs `git submodule update` on it at runtime.
+# Only remove .git from submodule subdirs (they're already checked out; we don't need their history).
+RUN find /era-contracts -mindepth 2 -name ".git" -type d -exec rm -rf {} + 2>/dev/null || true
 
 # ── Stage 3: Runtime image ────────────────────────────────────────────────────
 FROM ubuntu:22.04

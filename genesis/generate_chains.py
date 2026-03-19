@@ -41,6 +41,8 @@ ANVIL_RICH_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae78
 
 def sh(cmd: str, cwd: Path | None = None, env: dict | None = None) -> None:
     """Run a shell command, streaming output."""
+    # Collapse newlines and extra whitespace so multi-line strings work as expected
+    cmd = " ".join(cmd.split())
     merged_env = {**os.environ, **(env or {})}
     result = subprocess.run(
         cmd,
@@ -49,7 +51,7 @@ def sh(cmd: str, cwd: Path | None = None, env: dict | None = None) -> None:
         env=merged_env,
     )
     if result.returncode != 0:
-        print(f"ERROR: Command failed with exit code {result.returncode}: {cmd}", file=sys.stderr)
+        print(f"ERROR: Command failed with exit code {result.returncode}:\n\t{cmd.replace(' --', chr(10) + '\t  --')}", file=sys.stderr)
         sys.exit(result.returncode)
 
 

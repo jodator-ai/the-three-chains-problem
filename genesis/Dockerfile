@@ -103,12 +103,13 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && rm -rf /var/lib/apt/lists/* && \
     npm install -g yarn
 
-# Install standard foundry for anvil (L1 simulator) + cast (RPC calls at runtime).
-# foundry-zksync does not ship anvil; the standard foundry anvil is sufficient for L1 simulation.
+# forge + cast: copy from contracts-builder which already has foundry-zksync installed.
+# anvil: install from standard foundry — foundry-zksync does not ship an anvil binary.
+COPY --from=contracts-builder /root/.foundry/bin/forge /usr/local/bin/forge
+COPY --from=contracts-builder /root/.foundry/bin/cast  /usr/local/bin/cast
 RUN curl -L https://foundry.paradigm.xyz | bash && \
     /root/.foundry/bin/foundryup && \
-    ln -sf /root/.foundry/bin/anvil /usr/local/bin/anvil && \
-    ln -sf /root/.foundry/bin/cast  /usr/local/bin/cast
+    cp /root/.foundry/bin/anvil /usr/local/bin/anvil
 
 # Copy compiled zkstack binary
 COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/release/zkstack /usr/local/bin/zkstack

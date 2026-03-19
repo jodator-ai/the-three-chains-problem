@@ -195,26 +195,60 @@ copy_l1_state() {
   info "Copied l1-state.json.gz → $dest"
 }
 
-# ── step: generate chain configs ──────────────────────────────────────────────
-generate_chain_configs() {
+# ── step: provision chain configs ─────────────────────────────────────────────
+# When genesis was run (genesis-max-count ≥ count), use the chain configs it
+# produced — they contain the correct bridgehub address, bytecode supplier
+# address, and operator keys for the freshly-deployed l1-state.json.gz.
+# Without genesis (count ≤ PREBUILT_MAX), fall back to the hardcoded-key
+# generator (keys were embedded when the pre-built l1-state was created).
+provision_chain_configs() {
   local -r out_dir="$1"
-  info "Generating chain config files..."
-  "$SCRIPT_DIR/scripts/generate-chain-configs.sh" \
-    --count="$count" \
-    --output-dir="$out_dir" \
-    --version="$version"
+
+  local genesis_count=0
+  local sentinel="$SCRIPT_DIR/configs/$version/genesis-max-count"
+  [[ -f "$sentinel" ]] && genesis_count="$(cat "$sentinel" 2>/dev/null || echo 0)"
+
+  if [[ "$genesis_count" -ge "$count" ]]; then
+    info "Using genesis-generated chain configs from configs/$version/ ..."
+    local i chain_id src
+    for i in $(seq 1 "$count"); do
+      chain_id=$(( BASE_CHAIN_ID + i ))
+      src="$SCRIPT_DIR/configs/$version/chain_${chain_id}.yaml"
+      [[ -f "$src" ]] \
+        || die "Genesis chain config not found: $src — re-run: ./scripts/generate-genesis.sh --docker --count=$count"
+      cp "$src" "$out_dir/chain_${chain_id}.yaml"
+    done
+  else
+    info "Generating chain config files from pre-built keys..."
+    "$SCRIPT_DIR/scripts/generate-chain-configs.sh" \
+      --count="$count" \
+      --output-dir="$out_dir" \
+      --version="$version"
+  fi
 }
 
-# ── step: extract genesis.json ────────────────────────────────────────────────
+# ── step: ensure genesis.json ─────────────────────────────────────────────────
+# genesis.json is version-specific but chain-count-independent.
+# v30.2: committed to the repo at configs/v30.2/genesis.json.
+# After a genesis run it is also written there by the generator.
 ensure_genesis_json() {
   local -r dest="$1"
   mkdir -p "$(dirname "$dest")"
-  info "Extracting genesis.json from zksync-os-server image..."
+
+  local -r src="$SCRIPT_DIR/configs/$version/genesis.json"
+  if file_exists "$src"; then
+    cp "$src" "$dest"
+    info "Copied genesis.json → $dest"
+    return
+  fi
+
+  # Fallback: extract from server image (slow — only if somehow missing from repo)
+  warn "configs/$version/genesis.json not found locally; extracting from server image..."
   docker run --rm \
     --platform linux/amd64 \
     --entrypoint /bin/sh \
     "$server_image" \
-    -c "cat /app/local-chains/$version/default/genesis.json" \
+    -c "cat /app/local-chains/$version/genesis.json" \
     > "$dest" \
     || die "Failed to extract genesis.json from image $server_image"
   log "Extracted genesis.json → $dest"
@@ -299,7 +333,7 @@ main() {
   check_genesis_requirement
   download_bundler_contracts "$dev_dir/bundler/contracts"
   copy_l1_state "$dev_dir/l1/l1-state.json.gz"
-  generate_chain_configs "$dev_dir"
+  provision_chain_configs "$dev_dir"
   # Move each chain config into its per-instance zksyncos subdir
   local i chain_id
   for i in $(seq 1 "$count"); do

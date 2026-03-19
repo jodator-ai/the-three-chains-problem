@@ -51,6 +51,16 @@ def sh(cmd: str, cwd: Path | None = None, env: dict | None = None) -> None:
         env=merged_env,
     )
     if result.returncode != 0:
+        # Print any zkstack crash report to aid debugging
+        import glob as _glob
+        for report in _glob.glob("/tmp/report-*.toml"):
+            print(f"\n--- zkstack crash report: {report} ---", file=sys.stderr)
+            try:
+                with open(report) as _f:
+                    print(_f.read(), file=sys.stderr)
+            except Exception:
+                pass
+            print("--- end crash report ---\n", file=sys.stderr)
         formatted = cmd.replace(" --", "\n\t  --")
         print(f"ERROR: Command failed with exit code {result.returncode}:\n\t{formatted}", file=sys.stderr)
         sys.exit(result.returncode)

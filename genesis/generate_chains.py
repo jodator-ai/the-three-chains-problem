@@ -386,7 +386,11 @@ def main() -> None:
     zksync_era_path    = require_path("ZKSYNC_ERA_PATH")
     protocol_version   = require_env("PROTOCOL_VERSION")
 
-    zkstack_bin = zksync_era_path / "zkstack_cli" / "target" / "release" / "zkstack"
+    if skip_build:
+        # In the pre-built image the binary was installed to /usr/local/bin
+        zkstack_bin = Path("zkstack")
+    else:
+        zkstack_bin = zksync_era_path / "zkstack_cli" / "target" / "release" / "zkstack"
 
     workspace = output_dir / ".workspace"
     workspace.mkdir(parents=True, exist_ok=True)

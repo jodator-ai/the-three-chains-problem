@@ -227,14 +227,23 @@ def init_multi_chain_ecosystem(
         cwd=ecosystems_dir,
     )
 
-    # Set CTM contracts for zksync-os mode
+    # Set CTM contracts for zksync-os mode.
+    # --default-configs-src-path just needs to be an existing directory;
+    # zkos-v0.30.2 has no etc/env/file_based, so we create a minimal one
+    # containing genesis.json (used by zkstack as the chain genesis template).
+    default_configs_dir = workspace / "default-configs"
+    default_configs_dir.mkdir(parents=True, exist_ok=True)
+    genesis_src = output_dir / "genesis.json"
+    if genesis_src.exists():
+        shutil.copy(genesis_src, default_configs_dir / "genesis.json")
+
     sh(
         f"""
         {zkstack_bin}
           --ignore-prerequisites
           ctm set-ctm-contracts
           --contracts-src-path {era_contracts_path}
-          --default-configs-src-path {era_contracts_path}/etc/env/file_based
+          --default-configs-src-path {default_configs_dir}
           --zksync-os
         """,
         cwd=ecosystem_dir,

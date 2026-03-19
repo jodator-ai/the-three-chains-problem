@@ -100,7 +100,11 @@ def addresses_from_wallets_yaml(data: dict) -> list[str]:
     addresses = []
     for entry in data.values():
         if isinstance(entry, dict) and "address" in entry:
-            addresses.append(entry["address"])
+            addr = entry["address"]
+            # YAML may parse 0x... hex strings as integers
+            if isinstance(addr, int):
+                addr = hex(addr)
+            addresses.append(normalize_hex(str(addr)))
     return addresses
 
 
@@ -136,7 +140,9 @@ def get_contract_address(contracts_yaml: Path, field: str) -> str:
     if not val:
         print(f"ERROR: {field} not found in {contracts_yaml}", file=sys.stderr)
         sys.exit(1)
-    return normalize_hex(val, length=40)
+    if isinstance(val, int):
+        val = hex(val)
+    return normalize_hex(str(val), length=40)
 
 
 def write_chain_config(
@@ -364,9 +370,13 @@ def init_multi_chain_ecosystem(
             bytecode_supplier = get_contract_address(contracts_yaml, "l1_bytecodes_supplier_addr")
 
             wallets = load_yaml(wallets_yaml)
-            commit_sk  = normalize_hex(wallets["blob_operator"]["private_key"], length=64)
-            prove_sk   = normalize_hex(wallets["prove_operator"]["private_key"], length=64)
-            execute_sk = normalize_hex(wallets["execute_operator"]["private_key"], length=64)
+            def _sk(val: object) -> str:
+                if isinstance(val, int):
+                    val = hex(val)
+                return normalize_hex(str(val), length=64)
+            commit_sk  = _sk(wallets["blob_operator"]["private_key"])
+            prove_sk   = _sk(wallets["prove_operator"]["private_key"])
+            execute_sk = _sk(wallets["execute_operator"]["private_key"])
 
             rpc_port = 3050 + i  # 3050, 3051, 3052, ...
 

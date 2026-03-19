@@ -49,11 +49,12 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     apt-get install -y nodejs && \
     npm install -g yarn corepack
 
-# Install Foundry (specific version matching v30.2)
-# era-contracts tag zkos-v0.30.2 requires cast/forge 0.0.4 or 1.3.5
-# zkstack-cli tag protocol-upgrade-v1.3.1 uses foundry 1.3.5
-RUN curl -L https://foundry.paradigm.xyz | bash && \
-    /root/.foundry/bin/foundryup && \
+# Install Foundry-ZKsync (required for `forge build --zksync` in era-contracts)
+# Standard foundry does not have --zksync support; era-contracts l1-contracts
+# needs forge build --zksync to produce zkEVM artifacts used by zkstack for
+# L1 contract deployment.
+RUN curl -sSfL https://raw.githubusercontent.com/matter-labs/foundry-zksync/main/foundryup-zksync/install | bash && \
+    /root/.foundry/bin/foundryup-zksync && \
     ln -s /root/.foundry/bin/anvil /usr/local/bin/anvil && \
     ln -s /root/.foundry/bin/cast  /usr/local/bin/cast  && \
     ln -s /root/.foundry/bin/forge /usr/local/bin/forge && \

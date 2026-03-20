@@ -187,17 +187,19 @@ Pre-generated output in `examples/`:
 | Directory | Command | Description |
 |---|---|---|
 | `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3 --output=examples/l2s-v30.2-3` | 3 chains, v30.2, L1 settlement |
-| `examples/l2s-v31.0-3/` | `./configure-l2s.sh --count=3 --version=v31.0 --output=examples/l2s-v31.0-3` | 3 chains, v31.0, L1 settlement |
-| `examples/l2s-v31.0-gateway-3/` | `./configure-l2s.sh --count=3 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-3` | Gateway + 3 chains, v31.0 |
+| `examples/l2s-v31.0-3/` ¹ | `./configure-l2s.sh --count=3 --version=v31.0 --output=examples/l2s-v31.0-3` | 3 chains, v31.0, L1 settlement |
+| `examples/l2s-v31.0-gateway-3/` ¹ | `./configure-l2s.sh --count=3 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-3` | Gateway + 3 chains, v31.0 |
 | `examples/prividium-1/` | `./configure-prividiums.sh --count=1 --output=examples/prividium-1` | 1 full Prividium stack |
 | `examples/prividium-3/` | `./configure-prividiums.sh --count=3 --output=examples/prividium-3` | 3 full Prividium stacks (shared postgres) |
+
+¹ Requires genesis generation first (`./scripts/generate-genesis.sh --docker --count=3 --version=v31.0`). Needs 4 GB+ RAM — see [Genesis Generation](#genesis-generation-for-5-chains-v302--3-chains-v310) below.
 
 Each example is self-contained: all compose files, chain configs, genesis, and L1 state
 are in the same directory. Volume paths in compose files are relative to the output directory.
 
 ---
 
-## Genesis Generation for 5+ Chains
+## Genesis Generation for 5+ Chains (v30.2) / 3+ Chains (v31.0)
 
 Chains 1–4 (v30.2) and 1–2 (v31.0) are pre-configured with operator keys and a bundled L1 state.
 More chains require L1 contract deployment. Genesis generation always uses Docker:
@@ -206,6 +208,9 @@ More chains require L1 contract deployment. Genesis generation always uses Docke
 # Generate genesis for 10 chains (~30min first run; Docker layer cache makes reruns fast)
 ./scripts/generate-genesis.sh --docker --count=10
 
+# v31.0 requires specifying the version
+./scripts/generate-genesis.sh --docker --count=3 --version=v31.0
+
 # Then configure as usual
 ./configure-l2s.sh --count=10
 ./configure-prividiums.sh --count=10
@@ -213,6 +218,11 @@ More chains require L1 contract deployment. Genesis generation always uses Docke
 
 The script writes a `configs/v30.2/genesis-max-count` sentinel file so the configure scripts
 know genesis was generated for enough chains and skip the requirement check automatically.
+
+> **RAM requirement:** The genesis Docker image compiles `zkstack` (the ZKsync CLI) from source,
+> which requires linking a large binary (~BoringSSL, alloy, tokio). This needs **4 GB RAM minimum**
+> (8 GB recommended). On machines with less RAM the build will be OOM-killed.
+> Matter Labs does not publish a pre-built `zkstack` binary.
 
 ---
 
@@ -236,8 +246,8 @@ the-three-chains-problem/
 │                                 # (v31.0 assets are downloaded on first run)
 └── examples/                     # Pre-generated output for reference
     ├── l2s-v30.2-3/              # 3 chains, v30.2
-    ├── l2s-v31.0-3/              # 3 chains, v31.0
-    ├── l2s-v31.0-gateway-3/      # gateway + 3 chains, v31.0
+    ├── l2s-v31.0-3/              # 3 chains, v31.0 (requires genesis gen; see note above)
+    ├── l2s-v31.0-gateway-3/      # gateway + 3 chains, v31.0 (requires genesis gen)
     ├── prividium-1/              # 1 Prividium instance
     └── prividium-3/              # 3 Prividium instances (shared postgres)
 ```

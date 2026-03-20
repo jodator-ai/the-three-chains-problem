@@ -28,9 +28,10 @@ RUN git clone --depth 1 --branch ${ZKSTACK_TAG} \
     https://github.com/matter-labs/zksync-era.git /zksync-era
 
 WORKDIR /zksync-era/zkstack_cli
-# mold linker uses 5-10x less RAM than GNU ld at link time.
-# Release build is fine now; debug was only needed to reduce linker memory.
-ENV RUSTFLAGS="-C linker=mold"
+# mold uses 5-10x less RAM than GNU ld. Use -C link-arg=-fuse-ld=mold (not -C linker=mold)
+# so GCC remains the linker driver — it handles GCC-specific flags (-m64 etc.) and
+# then invokes mold for the actual link step.
+ENV RUSTFLAGS="-C link-arg=-fuse-ld=mold"
 RUN cargo build --release --jobs 1 --bin zkstack
 
 # Strip debug symbols to reduce binary size

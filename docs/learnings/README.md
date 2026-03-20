@@ -1,5 +1,20 @@
 # LLM Agent Collaboration Retrospective
 
+## Project purpose
+
+[ZKsync OS](https://github.com/matter-labs/zksync-os-server) is Matter Labs' next-generation ZK rollup stack. [Prividium](https://github.com/matter-labs/local-prividium) is their enterprise product built on top of it — a full self-contained stack per tenant (sequencer, postgres, keycloak, API, admin/user panels, block explorer).
+
+The upstream tooling supports running **one or two pre-configured chains** locally out of the box. There is no supported path for spinning up N independent instances with a single command.
+
+**Why this was needed:** Testing multi-tenant or multi-chain scenarios locally requires being able to run 3, 5, or 10 independent Prividium instances (or bare L2 chains) against a shared local L1. The upstream repos assume a fixed single-chain or two-chain setup and hardcode chain IDs throughout.
+
+This project provides:
+- `configure-l2s.sh --count=N` — generate docker-compose for N bare ZKsync OS L2 chains
+- `configure-prividiums.sh --count=N` — generate docker-compose for N full Prividium stacks
+- A Docker-based genesis generator for chains beyond the pre-built limit, built on a minimal fork of `matter-labs/zksync-os-scripts`
+
+The key technical challenge was that chains beyond the pre-configured limit require deploying L1 contracts via `zkstack` and dumping the resulting Anvil state — a process that normally takes 10+ minutes of compilation and is tightly coupled to the upstream server repo layout.
+
 ## Repos
 
 | Repo | Description |

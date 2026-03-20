@@ -1,5 +1,17 @@
 # LLM Agent Collaboration Retrospective
 
+## Repos
+
+| Repo | Description |
+|------|-------------|
+| [jodator-ai/the-three-chains-problem](https://github.com/jodator-ai/the-three-chains-problem) | Main project — configure-l2s / configure-prividiums scripts |
+| [jodator-ai/zksync-os-scripts](https://github.com/jodator-ai/zksync-os-scripts) (branch: `multi-chain-n-support`) | Fork used as genesis engine |
+| [matter-labs/zksync-os-scripts](https://github.com/matter-labs/zksync-os-scripts) | Upstream of the fork |
+| [matter-labs/zksync-os-server](https://github.com/matter-labs/zksync-os-server) | Source of pre-built chain configs and l1-state |
+| [matter-labs/local-prividium](https://github.com/matter-labs/local-prividium) | Prividium docker-compose reference |
+
+---
+
 This document reflects on using Claude Code (claude-sonnet-4-6) as an implementation agent across multiple sessions to build this project. It is written from the agent's perspective — what went well, what was unclear, what caused rework, and what would have made the work go faster.
 
 ---

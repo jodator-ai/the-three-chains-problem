@@ -68,7 +68,6 @@ ${BOLD}Options:${NC}
   --version=VER            ZKsync OS protocol version (default: $DEFAULT_VERSION)
   --server-image=IMG       zksync-os-server image (default: latest)
   --prividium-version=V    Prividium image tag (default: $DEFAULT_PRIVIDIUM_VERSION)
-  --start                  Start Docker after generating (runs ./start.sh up -d)
   --help, -h               Show this help message
 
 ${BOLD}Port layout per instance N (stride: $PORT_STRIDE):${NC}
@@ -81,9 +80,8 @@ ${BOLD}Prerequisites:${NC}
       docker login quay.io
 
 ${BOLD}Examples:${NC}
-  $SCRIPT_NAME --count=1           # Single Prividium (matches local-prividium defaults)
-  $SCRIPT_NAME --count=3           # Three independent Prividium instances
-  $SCRIPT_NAME --count=3 --start   # Generate and immediately start all containers
+  $SCRIPT_NAME --count=1    # Single Prividium (matches local-prividium defaults)
+  $SCRIPT_NAME --count=3    # Three independent Prividium instances
 
 EOF
   exit 0
@@ -99,7 +97,6 @@ parse_args() {
   server_image="$DEFAULT_SERVER_IMAGE"
   l1_image="$DEFAULT_L1_IMAGE"
   prividium_version="$DEFAULT_PRIVIDIUM_VERSION"
-  start_after=false
 
   for arg in "$@"; do
     case "$arg" in
@@ -108,7 +105,6 @@ parse_args() {
       --version=*)             version="${arg#*=}" ;;
       --server-image=*)        server_image="${arg#*=}" ;;
       --prividium-version=*)   prividium_version="${arg#*=}" ;;
-      --start)                 start_after=true ;;
       --help|-h)               usage ;;
       *) die "Unknown argument: $arg. $_usage_hint" ;;
     esac
@@ -303,9 +299,7 @@ print_summary() {
   echo ""
   echo -e "${BOLD}To start:${NC}"
   echo ""
-  echo -e "  ${BOLD}cd $out_dir && ./start.sh up -d${NC}"
-  echo ""
-  echo -e "  (or re-run with ${BOLD}--start${NC} to generate and start in one command)"
+  echo -e "  ${BOLD}cd $out_dir && ./start.sh${NC}"
   echo ""
   echo -e "${BOLD}Or using docker compose directly:${NC}"
   echo ""
@@ -355,11 +349,6 @@ main() {
   echo ""
   echo -e "${BOLD}Generated files in $out_dir:${NC}"
   print_summary "$out_dir"
-
-  if $start_after; then
-    log "Starting containers (--start)..."
-    exec "$out_dir/start.sh" up -d
-  fi
 }
 
 main "$@"

@@ -22,6 +22,9 @@ configs/v30.2/.workspace/
 # Genesis generator Docker build cache
 genesis/.docker-built
 
+# Fork cloned locally for development — not part of repo
+zksync-os-scripts/
+
 # Editor
 .DS_Store
 *.swp

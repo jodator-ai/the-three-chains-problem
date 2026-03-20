@@ -3,6 +3,9 @@
 # This Docker image provides a self-contained environment for generating
 # ZKsync OS chain configurations and L1 state for N L2 chains.
 #
+# Uses https://github.com/jodator-ai/zksync-os-scripts (fork of matter-labs/zksync-os-scripts)
+# with added support for CHAIN_IDS, OUTPUT_DIR, SKIP_BUILD and SKIP_DEPOSIT_TX env vars.
+#
 # All heavy compilation (Rust, Solidity/foundry) happens at IMAGE BUILD TIME.
 # At runtime, only the fast Anvil-based deployment runs (~2-3 min).
 #
@@ -83,6 +86,7 @@ RUN find /era-contracts -mindepth 2 -name ".git" -type d -exec rm -rf {} + 2>/de
 FROM ubuntu:22.04
 
 ARG PROTOCOL_VERSION=v30.2
+ARG ZKOS_SCRIPTS_REF=multi-chain-n-support
 ENV PROTOCOL_VERSION=${PROTOCOL_VERSION}
 
 LABEL org.opencontainers.image.title="ZKsync OS Genesis Generator"
@@ -123,25 +127,36 @@ COPY --from=zkstack-builder /zksync-era /zksync-era
 # Remove the Rust build cache to keep runtime image lean
 RUN rm -rf /zksync-era/zkstack_cli/target /zksync-era/target 2>/dev/null || true
 
-# Copy pre-built genesis.json
-COPY --from=contracts-builder /prebuilt/genesis.json /prebuilt/genesis.json
+# Clone zksync-os-scripts fork (provides update_server.py with CHAIN_IDS / OUTPUT_DIR support)
+RUN git clone --depth 1 --branch ${ZKOS_SCRIPTS_REF} \
+    https://github.com/jodator-ai/zksync-os-scripts.git /zksync-os-scripts
 
-# Install Python deps
-RUN pip3 install pyyaml
+# Install Python deps from zksync-os-scripts
+RUN pip3 install pyyaml packaging rich
 
-# Copy genesis generator script
-COPY generate_chains.py /usr/local/bin/generate_chains.py
-RUN chmod +x /usr/local/bin/generate_chains.py
+# Copy pre-built genesis.json into the location update_server.py expects
+RUN mkdir -p /zksync-os-scripts/local-chains/${PROTOCOL_VERSION}/default \
+             /zksync-os-scripts/local-chains/${PROTOCOL_VERSION}/multi_chain
+COPY --from=contracts-builder /prebuilt/genesis.json \
+    /zksync-os-scripts/local-chains/${PROTOCOL_VERSION}/genesis.json
 
-# Tell generate_chains.py to skip the build steps (already done above)
+# Tell update_server.py to skip build steps (already done above) and deposit tx
+# (not needed for the local dev setup — operators are funded via Anvil impersonation).
+ENV SKIP_BUILD=1
+ENV SKIP_DEPOSIT_TX=1
 ENV GENESIS_PREBUILT=1
-# Point to the pre-built genesis.json
-ENV GENESIS_JSON_CACHE=/prebuilt/genesis.json
 
+# Runtime env vars expected by update_server.py / lib/entry.py
 ENV ERA_CONTRACTS_PATH=/era-contracts
 ENV ZKSYNC_ERA_PATH=/zksync-era
+ENV REPO_DIR=/zksync-os-scripts
 
 WORKDIR /workspace
 
-ENTRYPOINT ["python3", "/usr/local/bin/generate_chains.py"]
+# Entrypoint: thin wrapper that maps --chain-ids / --output CLI args to env vars
+# and then invokes update_server.py
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["--help"]

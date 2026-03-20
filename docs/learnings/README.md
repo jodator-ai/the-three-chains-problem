@@ -42,6 +42,47 @@ Total: **53 commits**, of which **18 (~34%) were fixes** — almost all in the g
 
 ---
 
+## Time analysis
+
+*Inferred from git commit timestamps. Gaps between commits indicate either agent working (short gaps) or user testing/waiting (long gaps).*
+
+### Sessions
+
+| Session | Date | Span | Wall time |
+|---------|------|------|-----------|
+| 1 | Mar 17–18 | 17:46 → (overnight) → 10:00–17:37 | ~7h40m active |
+| 2 | Mar 19 | 09:11–18:29 | ~9h20m active |
+| 3 | Mar 20 | 11:48–14:07 | ~2h20m active |
+
+**Total active session time: ~19h20m** across 3 days (not counting overnight gaps).
+
+### Where the time went
+
+**Agent working independently: ~12h**
+
+Most of sessions 1 and 3 were agent-driven with short commit intervals (3–30 min between commits). Session 2 had 4–5 stretches of agent work totalling ~4h. The agent was mostly unblocked once given the task and initial context.
+
+**User-side time (testing, Docker builds, providing feedback): ~7h20m**
+
+The dominant cost was Docker build cycles during genesis debugging (session 2). Each cycle: user runs `docker build` (~20–30 min compile time), observes the next failure, pastes output back. The gaps 09:59→12:17 (2h18m), 13:13→14:27 (74m), 15:36→17:06 (90m), and 17:06→18:00 (54m) are all Docker build/test cycles. That's ~5h15m of inherently slow feedback loops. The remaining ~2h was user review, testing the running stack, and giving directional feedback.
+
+**Rework due to unclear requirements: ~2h (agent) + ~30m (user explanation)**
+
+Three avoidable cycles:
+- Fork implemented twice (248→96 line diff): ~1h agent rework + ~15m of back-and-forth
+- `SKIP_BUILD`/`SKIP_DEPOSIT_TX` removed then re-added: ~30m agent rework
+- `--start` flag added then reverted: ~20m agent rework + ~10m clarification
+
+### Could this have been faster?
+
+**The Docker build loop was the main bottleneck — and it's partly structural.** Genesis generation integrates 4 complex upstream tools (zkstack, foundry-zksync, standard foundry, era-contracts) with undocumented runtime quirks. 15 fix commits × (write fix ~5m + docker build ~25m + observe failure ~5m) = the bulk of session 2. If the agent could run Docker locally, this would have been faster but not eliminated — the root cause was missing knowledge, not missing execution ability.
+
+**~2h of rework was avoidable** with two upfront clarifications: "the fork should be a minimal upstream-ready PR" and "the runtime Docker image has no Rust/cargo." Both are easy to state; neither is obvious from the codebase.
+
+**Rough counterfactual:** With a reference genesis run log and the two constraint clarifications upfront, session 2 could plausibly have been ~5h instead of ~9h20m.
+
+---
+
 ## What went well
 
 ### Codebase exploration and orientation

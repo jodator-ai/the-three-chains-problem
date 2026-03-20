@@ -149,6 +149,7 @@ readonly BUNDLER_CONTRACTS_CACHE="$SCRIPT_DIR/configs/bundler"
 
 download_bundler_contracts() {
   local -r dest_dir="$1"
+  mkdir -p "$dest_dir"
 
   if [[ -d "$BUNDLER_CONTRACTS_CACHE" && -f "$BUNDLER_CONTRACTS_CACHE/package.json" ]]; then
     info "Bundler contracts already cached at $BUNDLER_CONTRACTS_CACHE"

@@ -1,0 +1,18 @@
+# Compiler output
+cache/
+out/
+
+# Soldeer dependencies (installed from soldeer.lock)
+dependencies/
+remappings.txt
+
+# Forge lib (installed via forge install)
+lib/
+
+# Broadcast files from deployments
+broadcast/
+
+# Environment files
+.env
+.env.*
+!.env.example

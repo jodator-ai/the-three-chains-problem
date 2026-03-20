@@ -37,8 +37,8 @@ L2 chains and posts them to L1, reducing L1 costs. It was introduced in protocol
 # 4 chains, v30.2, settle to L1 (pre-configured, fastest)
 ./configure-l2s.sh --count=4
 
-# 2 chains + gateway, v31.0 (downloads ~24 MB of upstream assets on first run)
-./configure-l2s.sh --count=2 --version=v31.0 --gateway
+# 3 chains + gateway, v31.0 (downloads ~24 MB of upstream assets on first run)
+./configure-l2s.sh --count=3 --version=v31.0 --gateway
 
 # Then use the printed docker compose command, e.g.:
 docker compose \
@@ -186,12 +186,9 @@ Pre-generated output in `examples/`:
 
 | Directory | Command | Description |
 |---|---|---|
-| `examples/l2s-v30.2-2/` | `./configure-l2s.sh --count=2 --output=examples/l2s-v30.2-2` | 2 chains, v30.2, L1 settlement |
 | `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3 --output=examples/l2s-v30.2-3` | 3 chains, v30.2, L1 settlement |
-| `examples/l2s-v30.2-4/` | `./configure-l2s.sh --count=4 --output=examples/l2s-v30.2-4` | 4 chains, v30.2, L1 settlement |
-| `examples/l2s-v31.0-1/` | `./configure-l2s.sh --count=1 --version=v31.0 --output=examples/l2s-v31.0-1` | 1 chain, v31.0, L1 settlement |
-| `examples/l2s-v31.0-2/` | `./configure-l2s.sh --count=2 --version=v31.0 --output=examples/l2s-v31.0-2` | 2 chains, v31.0, L1 settlement |
-| `examples/l2s-v31.0-gateway-2/` | `./configure-l2s.sh --count=2 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-2` | Gateway + 2 chains, v31.0 |
+| `examples/l2s-v31.0-3/` | `./configure-l2s.sh --count=3 --version=v31.0 --output=examples/l2s-v31.0-3` | 3 chains, v31.0, L1 settlement |
+| `examples/l2s-v31.0-gateway-3/` | `./configure-l2s.sh --count=3 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-3` | Gateway + 3 chains, v31.0 |
 | `examples/prividium-1/` | `./configure-prividiums.sh --count=1 --output=examples/prividium-1` | 1 full Prividium stack |
 | `examples/prividium-3/` | `./configure-prividiums.sh --count=3 --output=examples/prividium-3` | 3 full Prividium stacks (shared postgres) |
 
@@ -238,12 +235,9 @@ the-three-chains-problem/
 │       └── l1-state.json.gz      # Custom Anvil L1 state (chains 1–4 pre-deployed)
 │                                 # (v31.0 assets are downloaded on first run)
 └── examples/                     # Pre-generated output for reference
-    ├── l2s-v30.2-2/              # 2 chains, v30.2
     ├── l2s-v30.2-3/              # 3 chains, v30.2
-    ├── l2s-v30.2-4/              # 4 chains, v30.2
-    ├── l2s-v31.0-1/              # 1 chain, v31.0
-    ├── l2s-v31.0-2/              # 2 chains, v31.0
-    ├── l2s-v31.0-gateway-2/      # gateway + 2 chains, v31.0
+    ├── l2s-v31.0-3/              # 3 chains, v31.0
+    ├── l2s-v31.0-gateway-3/      # gateway + 3 chains, v31.0
     ├── prividium-1/              # 1 Prividium instance
     └── prividium-3/              # 3 Prividium instances (shared postgres)
 ```

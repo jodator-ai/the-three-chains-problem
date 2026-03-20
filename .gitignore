@@ -17,6 +17,9 @@ configs/v30.2/prividium-*/
 # v31.0 assets — downloaded from upstream on first run (not custom surgery artifacts)
 configs/v31.0/
 
+# Bundler contracts cache — downloaded from upstream local-prividium on first run
+configs/bundler/
+
 configs/v30.2/.workspace/
 
 # Genesis generator Docker build cache

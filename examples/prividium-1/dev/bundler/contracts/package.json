@@ -1,0 +1,17 @@
+{
+    "name": "@repo/contracts",
+    "version": "0.0.0",
+    "private": true,
+    "scripts": {
+        "install-deps": "cd entrypoint && forge soldeer install --config-location foundry",
+        "bridge-funds": "tsx scripts/bridge-funds.ts",
+        "entrypoint:deploy": "cd entrypoint && ./script/deploy.sh"
+    },
+    "dependencies": {
+        "@matterlabs/zksync-js": "^0.0.2",
+        "viem": "^2.0.0"
+    },
+    "devDependencies": {
+        "tsx": "^4.0.0"
+    }
+}

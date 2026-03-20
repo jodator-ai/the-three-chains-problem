@@ -22,18 +22,19 @@ FROM rust:1.82 AS zkstack-builder
 
 ARG ZKSTACK_TAG=protocol-upgrade-v1.3.1
 
-RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y git mold && rm -rf /var/lib/apt/lists/*
 
 RUN git clone --depth 1 --branch ${ZKSTACK_TAG} \
     https://github.com/matter-labs/zksync-era.git /zksync-era
 
 WORKDIR /zksync-era/zkstack_cli
-# Debug profile: O0 means far less linker memory than --release (no LTO, no codegen units merging).
-# zkstack is a CLI tool — runtime performance doesn't matter for genesis generation.
-RUN cargo build --jobs 1 --bin zkstack
+# mold linker uses 5-10x less RAM than GNU ld at link time.
+# Release build is fine now; debug was only needed to reduce linker memory.
+ENV RUSTFLAGS="-C linker=mold"
+RUN cargo build --release --jobs 1 --bin zkstack
 
 # Strip debug symbols to reduce binary size
-RUN strip target/debug/zkstack
+RUN strip target/release/zkstack
 
 # ── Stage 2: Build era-contracts + genesis-gen ────────────────────────────────
 FROM rust:1.82 AS contracts-builder
@@ -118,7 +119,7 @@ RUN curl -L https://foundry.paradigm.xyz | bash && \
     cp /root/.foundry/bin/anvil /usr/local/bin/anvil
 
 # Copy compiled zkstack binary
-COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/debug/zkstack /usr/local/bin/zkstack
+COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/release/zkstack /usr/local/bin/zkstack
 
 # Copy era-contracts (source + compiled artifacts are needed by zkstack at runtime)
 COPY --from=contracts-builder /era-contracts /era-contracts

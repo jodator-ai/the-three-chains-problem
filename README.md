@@ -66,8 +66,8 @@ docker compose \
 ./configure-l2s.sh --count=N [options]
 
   --count=N           Number of L2 chains
-                        v30.2: chains 1–4 pre-configured; 5–8 require genesis generation
-                        v31.0: chains 1–2 pre-configured; 3–8 require genesis generation
+                        v30.2: chains 1–4 pre-configured; 5–10 require genesis generation
+                        v31.0: chains 1–2 pre-configured; 3–10 require genesis generation
   --version=VER       Protocol version: v30.2 (default) | v31.0
   --gateway           Enable gateway mode (v31.0 only)
   --output=DIR        Output directory, wiped on each run (default: ./out)
@@ -259,7 +259,7 @@ Generated files (gitignored):
 | Protocol v30.2 | Chains 1–4 pre-configured |
 | Protocol v31.0 | Chains 1–2 pre-configured; gateway mode available |
 | Prividium images | v1.153.1 |
-| Foundry | 1.3.5 |
+| Foundry | 1.3.4 |
 
 ## Troubleshooting
 

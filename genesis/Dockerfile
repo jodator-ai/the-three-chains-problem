@@ -28,10 +28,12 @@ RUN git clone --depth 1 --branch ${ZKSTACK_TAG} \
     https://github.com/matter-labs/zksync-era.git /zksync-era
 
 WORKDIR /zksync-era/zkstack_cli
-RUN cargo build --release --jobs 1 --bin zkstack
+# Debug profile: O0 means far less linker memory than --release (no LTO, no codegen units merging).
+# zkstack is a CLI tool — runtime performance doesn't matter for genesis generation.
+RUN cargo build --jobs 1 --bin zkstack
 
-# Strip binary to reduce size
-RUN strip target/release/zkstack
+# Strip debug symbols to reduce binary size
+RUN strip target/debug/zkstack
 
 # ── Stage 2: Build era-contracts + genesis-gen ────────────────────────────────
 FROM rust:1.82 AS contracts-builder
@@ -70,7 +72,7 @@ RUN cd l1-contracts  && yarn build:foundry
 WORKDIR /era-contracts/tools/zksync-os-genesis-gen
 RUN EXEC_VER="${PROTOCOL_VERSION#v}" && EXEC_VER="${EXEC_VER%%.*}" && \
     mkdir -p /prebuilt && \
-    cargo run --release -- \
+    cargo run --release --jobs 1 -- \
         --output-file /prebuilt/genesis.json \
         --execution-version "$EXEC_VER"
 
@@ -116,7 +118,7 @@ RUN curl -L https://foundry.paradigm.xyz | bash && \
     cp /root/.foundry/bin/anvil /usr/local/bin/anvil
 
 # Copy compiled zkstack binary
-COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/release/zkstack /usr/local/bin/zkstack
+COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/debug/zkstack /usr/local/bin/zkstack
 
 # Copy era-contracts (source + compiled artifacts are needed by zkstack at runtime)
 COPY --from=contracts-builder /era-contracts /era-contracts

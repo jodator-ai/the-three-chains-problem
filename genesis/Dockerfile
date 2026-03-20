@@ -28,7 +28,7 @@ RUN git clone --depth 1 --branch ${ZKSTACK_TAG} \
     https://github.com/matter-labs/zksync-era.git /zksync-era
 
 WORKDIR /zksync-era/zkstack_cli
-RUN cargo build --release --bin zkstack
+RUN cargo build --release --jobs 1 --bin zkstack
 
 # Strip binary to reduce size
 RUN strip target/release/zkstack

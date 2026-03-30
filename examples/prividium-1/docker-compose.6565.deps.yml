@@ -11,7 +11,7 @@ services:
 
   # ── zksyncos sequencer ───────────────────────────────────────────────────────
   zksyncos-6565:
-    image: ghcr.io/matter-labs/zksync-os-server:latest
+    image: ghcr.io/matter-labs/zksync-os-server:v0.18.1
     platform: linux/amd64
     ports:
       - '5050:3050'
@@ -252,7 +252,7 @@ services:
         condition: service_healthy
 
   entrypoint-deployer-6565:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: ghcr.io/foundry-rs/foundry:v1.5.1
     entrypoint: ''
     user: 'root'
     volumes:
@@ -270,7 +270,7 @@ services:
         condition: service_completed_successfully
 
   bundler-6565:
-    image: quay.io/matterlabs_enterprise/prividium-bundler:v1.162.1
+    image: quay.io/matterlabs_enterprise/prividium-bundler:v1.166.1
     platform: linux/amd64
     restart: unless-stopped
     ports:

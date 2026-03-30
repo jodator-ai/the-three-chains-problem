@@ -20,9 +20,9 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 
 readonly DEFAULT_VERSION="v30.2"
-readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:latest"
-readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.3.4"
-readonly DEFAULT_PRIVIDIUM_VERSION="v1.153.1"
+readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:v0.18.1"
+readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
+readonly DEFAULT_PRIVIDIUM_VERSION="v1.166.1"
 readonly DEFAULT_OUTPUT="./out"
 readonly BASE_CHAIN_ID=6564
 readonly PORT_STRIDE=200
@@ -66,7 +66,8 @@ ${BOLD}Options:${NC}
   --count=N                Number of Prividium instances (1–$PREBUILT_MAX pre-configured)
   --output=DIR             Output directory (default: $DEFAULT_OUTPUT)
   --version=VER            ZKsync OS protocol version (default: $DEFAULT_VERSION)
-  --server-image=IMG       zksync-os-server image (default: latest)
+  --zksyncos-version=VER   zksync-os-server image tag, e.g. v0.18.1 (sets --server-image)
+  --server-image=IMG       Full zksync-os-server image ref (default: $DEFAULT_SERVER_IMAGE)
   --prividium-version=V    Prividium image tag (default: $DEFAULT_PRIVIDIUM_VERSION)
   --help, -h               Show this help message
 
@@ -103,6 +104,7 @@ parse_args() {
       --count=*)               count="${arg#*=}" ;;
       --output=*)              output="${arg#*=}" ;;
       --version=*)             version="${arg#*=}" ;;
+      --zksyncos-version=*)    server_image="ghcr.io/matter-labs/zksync-os-server:${arg#*=}" ;;
       --server-image=*)        server_image="${arg#*=}" ;;
       --prividium-version=*)   prividium_version="${arg#*=}" ;;
       --help|-h)               usage ;;

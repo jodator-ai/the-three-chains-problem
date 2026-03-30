@@ -4,7 +4,7 @@ name: zksync-l2s
 
 services:
   zksyncos-6567:
-    image: ghcr.io/matter-labs/zksync-os-server:latest
+    image: ghcr.io/matter-labs/zksync-os-server:v0.18.1
     platform: linux/amd64
     ports:
       - '5052:3052'

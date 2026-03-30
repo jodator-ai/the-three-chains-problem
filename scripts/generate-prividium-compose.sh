@@ -35,9 +35,10 @@ readonly SCRIPT_NAME="generate-prividium-compose.sh"
 # ── defaults ──────────────────────────────────────────────────────────────────
 readonly DEFAULT_COUNT=1
 readonly DEFAULT_VERSION="v30.2"
-readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:latest"
-readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.3.4"
-readonly DEFAULT_PRIVIDIUM_VERSION="v1.153.1"
+readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:v0.18.1"
+readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
+readonly DEFAULT_PRIVIDIUM_VERSION="v1.166.1"
+readonly DEFAULT_FOUNDRY_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
 readonly BASE_CHAIN_ID=6564
 readonly PORT_STRIDE=200
 
@@ -54,14 +55,16 @@ Generates composable docker-compose files for N Prividium instances.
 Volume paths in output files are relative to <output-dir>.
 
 Options:
-  --count=N              Number of Prividium instances (default: $DEFAULT_COUNT)
-  --output-dir=DIR       Directory to write compose files (required)
-  --configs-dir=DIR      Directory containing chain configs and genesis (required)
-  --version=VER          ZKsync OS protocol version (default: $DEFAULT_VERSION)
-  --server-image=IMG     zksync-os-server image (default: $DEFAULT_SERVER_IMAGE)
-  --l1-image=IMG         Anvil image (default: $DEFAULT_L1_IMAGE)
-  --prividium-version=V  Prividium services image tag (default: $DEFAULT_PRIVIDIUM_VERSION)
-  --help, -h             Show this message
+  --count=N                Number of Prividium instances (default: $DEFAULT_COUNT)
+  --output-dir=DIR         Directory to write compose files (required)
+  --configs-dir=DIR        Directory containing chain configs and genesis (required)
+  --version=VER            ZKsync OS protocol version (default: $DEFAULT_VERSION)
+  --zksyncos-version=VER   zksync-os-server image tag, e.g. v0.18.1 (sets --server-image)
+  --server-image=IMG       Full zksync-os-server image ref (default: $DEFAULT_SERVER_IMAGE)
+  --l1-image=IMG           Anvil image (default: $DEFAULT_L1_IMAGE)
+  --prividium-version=V    Prividium services image tag (default: $DEFAULT_PRIVIDIUM_VERSION)
+  --foundry-image=IMG      Foundry image for entrypoint deployer (default: $DEFAULT_FOUNDRY_IMAGE)
+  --help, -h               Show this message
 EOF
   exit 0
 }
@@ -74,17 +77,20 @@ version="$DEFAULT_VERSION"
 server_image="$DEFAULT_SERVER_IMAGE"
 l1_image="$DEFAULT_L1_IMAGE"
 prividium_version="$DEFAULT_PRIVIDIUM_VERSION"
+foundry_image="$DEFAULT_FOUNDRY_IMAGE"
 
 for arg in "$@"; do
   case "$arg" in
-    --count=*)              count="${arg#*=}" ;;
-    --output-dir=*)         output_dir="${arg#*=}" ;;
-    --configs-dir=*)        configs_dir="${arg#*=}" ;;
-    --version=*)            version="${arg#*=}" ;;
-    --server-image=*)       server_image="${arg#*=}" ;;
-    --l1-image=*)           l1_image="${arg#*=}" ;;
-    --prividium-version=*)  prividium_version="${arg#*=}" ;;
-    --help|-h)              usage ;;
+    --count=*)                count="${arg#*=}" ;;
+    --output-dir=*)           output_dir="${arg#*=}" ;;
+    --configs-dir=*)          configs_dir="${arg#*=}" ;;
+    --version=*)              version="${arg#*=}" ;;
+    --server-image=*)         server_image="${arg#*=}" ;;
+    --zksyncos-version=*)     server_image="ghcr.io/matter-labs/zksync-os-server:${arg#*=}" ;;
+    --l1-image=*)             l1_image="${arg#*=}" ;;
+    --prividium-version=*)    prividium_version="${arg#*=}" ;;
+    --foundry-image=*)        foundry_image="${arg#*=}" ;;
+    --help|-h)                usage ;;
     *) die "Unknown argument: $arg" ;;
   esac
 done
@@ -674,7 +680,7 @@ services:
         condition: service_healthy
 
   entrypoint-deployer-${s}:
-    image: ghcr.io/foundry-rs/foundry:latest
+    image: ${foundry_image}
     entrypoint: ''
     user: 'root'
     volumes:
@@ -692,7 +698,7 @@ services:
         condition: service_completed_successfully
 
   bundler-${s}:
-    image: quay.io/matterlabs_enterprise/prividium-bundler:v1.162.1
+    image: quay.io/matterlabs_enterprise/prividium-bundler:${prividium_version}
     platform: linux/amd64
     restart: unless-stopped
     ports:
@@ -759,13 +765,8 @@ services:
 
   # ── prividium-api ────────────────────────────────────────────────────────────
   prividium-api-${s}:
-    ## REMOVE PUBLIC:START
-    build:
-      context: .
-      dockerfile: ./apps/permissions-api/Dockerfile
-    ## REMOVE PUBLIC:END
-    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-permissions-api:${prividium_version}
-    ## PUBLIC:platform: linux/amd64
+    image: quay.io/matterlabs_enterprise/prividium-permissions-api:${prividium_version}
+    platform: linux/amd64
     restart: unless-stopped
     depends_on:
       postgres:
@@ -802,13 +803,8 @@ services:
 
   # ── admin panel ──────────────────────────────────────────────────────────────
   admin-panel-${s}:
-    ## REMOVE PUBLIC:START
-    build:
-      context: .
-      dockerfile: ./apps/adminv2/Dockerfile
-    ## REMOVE PUBLIC:END
-    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-adminv2:${prividium_version}
-    ## PUBLIC:platform: linux/amd64
+    image: quay.io/matterlabs_enterprise/prividium-adminv2:${prividium_version}
+    platform: linux/amd64
     restart: unless-stopped
     environment:
       - VITE_PRIVIDIUM_API_URL=http://localhost:${p_api}
@@ -822,13 +818,8 @@ services:
 
   # ── user panel ───────────────────────────────────────────────────────────────
   user-panel-${s}:
-    ## REMOVE PUBLIC:START
-    build:
-      context: .
-      dockerfile: ./apps/user-panel/Dockerfile
-    ## REMOVE PUBLIC:END
-    ## PUBLIC:image: quay.io/matterlabs_enterprise/prividium-user-panel:${prividium_version}
-    ## PUBLIC:platform: linux/amd64
+    image: quay.io/matterlabs_enterprise/prividium-user-panel:${prividium_version}
+    platform: linux/amd64
     restart: unless-stopped
     environment:
       - VITE_OIDC_AUTHORITY=${kc_host}/realms/prividium

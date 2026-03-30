@@ -23,8 +23,8 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly SCRIPT_NAME="$(basename "${BASH_SOURCE[0]}")"
 
 readonly DEFAULT_VERSION="v30.2"
-readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:latest"
-readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.3.4"
+readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:v0.18.1"
+readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
 readonly DEFAULT_OUTPUT="./out"
 readonly BASE_CHAIN_ID=6564
 readonly GATEWAY_CHAIN_ID=506
@@ -85,13 +85,14 @@ ${BOLD}Usage:${NC}
   $SCRIPT_NAME --count=N [options]
 
 ${BOLD}Options:${NC}
-  --count=N           Number of L2 chains to configure
-  --output=DIR        Output directory (default: $DEFAULT_OUTPUT)
-  --version=VER       ZKsync OS protocol version: v30.2 | v31.0 (default: $DEFAULT_VERSION)
-  --gateway           v31.0 only: run gateway chain (506); L2 chains settle to it
-  --force-genesis     Re-download/re-extract genesis.json (and gateway-db.tar.gz)
-  --server-image=IMG  Docker image for zksync-os-server (default: latest)
-  --help, -h          Show this help message
+  --count=N                Number of L2 chains to configure
+  --output=DIR             Output directory (default: $DEFAULT_OUTPUT)
+  --version=VER            ZKsync OS protocol version: v30.2 | v31.0 (default: $DEFAULT_VERSION)
+  --gateway                v31.0 only: run gateway chain (506); L2 chains settle to it
+  --force-genesis          Re-download/re-extract genesis.json (and gateway-db.tar.gz)
+  --zksyncos-version=VER   zksync-os-server image tag, e.g. v0.18.1 (sets --server-image)
+  --server-image=IMG       Full zksync-os-server image ref (default: $DEFAULT_SERVER_IMAGE)
+  --help, -h               Show this help message
 
 ${BOLD}Settlement modes:${NC}
   v30.2               Chains 1–4 pre-configured; settle to L1.  pubdata: Blobs
@@ -130,13 +131,14 @@ parse_args() {
 
   for arg in "$@"; do
     case "$arg" in
-      --count=*)        count="${arg#*=}" ;;
-      --output=*)       output="${arg#*=}" ;;
-      --version=*)      version="${arg#*=}" ;;
-      --gateway)        gateway=true ;;
-      --force-genesis)  force_genesis=true ;;
-      --server-image=*) server_image="${arg#*=}" ;;
-      --help|-h)        usage ;;
+      --count=*)              count="${arg#*=}" ;;
+      --output=*)             output="${arg#*=}" ;;
+      --version=*)            version="${arg#*=}" ;;
+      --gateway)              gateway=true ;;
+      --force-genesis)        force_genesis=true ;;
+      --zksyncos-version=*)   server_image="ghcr.io/matter-labs/zksync-os-server:${arg#*=}" ;;
+      --server-image=*)       server_image="${arg#*=}" ;;
+      --help|-h)              usage ;;
       *) die "Unknown argument: $arg. $_hint" ;;
     esac
   done

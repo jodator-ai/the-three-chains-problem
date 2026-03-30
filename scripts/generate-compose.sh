@@ -15,8 +15,8 @@ readonly SCRIPT_NAME="generate-compose.sh"
 # ── defaults ──────────────────────────────────────────────────────────────────
 readonly DEFAULT_COUNT=2
 readonly DEFAULT_VERSION="v30.2"
-readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:latest"
-readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.3.4"
+readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:v0.18.1"
+readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
 readonly BASE_CHAIN_ID=6564
 
 readonly GATEWAY_CHAIN_ID=506
@@ -36,14 +36,15 @@ Generates composable docker-compose files for N ZKsync OS L2 chains.
 Volume paths in output files are relative to <output-dir>.
 
 Options:
-  --count=N           Number of L2 chains (default: $DEFAULT_COUNT)
-  --output-dir=DIR    Directory to write compose files into (required)
-  --configs-dir=DIR   Directory containing chain configs and genesis (required)
-  --version=VER       ZKsync OS version (default: $DEFAULT_VERSION)
-  --server-image=IMG  zksync-os-server Docker image (default: $DEFAULT_SERVER_IMAGE)
-  --l1-image=IMG      L1 / Anvil Docker image (default: $DEFAULT_L1_IMAGE)
-  --gateway           Add a gateway chain (506) service; L2 chains depend on it
-  --help, -h          Show this message
+  --count=N                Number of L2 chains (default: $DEFAULT_COUNT)
+  --output-dir=DIR         Directory to write compose files into (required)
+  --configs-dir=DIR        Directory containing chain configs and genesis (required)
+  --version=VER            ZKsync OS version (default: $DEFAULT_VERSION)
+  --zksyncos-version=VER   zksync-os-server image tag, e.g. v0.18.1 (sets --server-image)
+  --server-image=IMG       Full zksync-os-server image ref (default: $DEFAULT_SERVER_IMAGE)
+  --l1-image=IMG           L1 / Anvil Docker image (default: $DEFAULT_L1_IMAGE)
+  --gateway                Add a gateway chain (506) service; L2 chains depend on it
+  --help, -h               Show this message
 EOF
   exit 0
 }
@@ -59,14 +60,15 @@ gateway=false
 
 for arg in "$@"; do
   case "$arg" in
-    --count=*)        count="${arg#*=}" ;;
-    --output-dir=*)   output_dir="${arg#*=}" ;;
-    --configs-dir=*)  configs_dir="${arg#*=}" ;;
-    --version=*)      version="${arg#*=}" ;;
-    --server-image=*) server_image="${arg#*=}" ;;
-    --l1-image=*)     l1_image="${arg#*=}" ;;
-    --gateway)        gateway=true ;;
-    --help|-h)        usage ;;
+    --count=*)              count="${arg#*=}" ;;
+    --output-dir=*)         output_dir="${arg#*=}" ;;
+    --configs-dir=*)        configs_dir="${arg#*=}" ;;
+    --version=*)            version="${arg#*=}" ;;
+    --zksyncos-version=*)   server_image="ghcr.io/matter-labs/zksync-os-server:${arg#*=}" ;;
+    --server-image=*)       server_image="${arg#*=}" ;;
+    --l1-image=*)           l1_image="${arg#*=}" ;;
+    --gateway)              gateway=true ;;
+    --help|-h)              usage ;;
     *) die "Unknown argument: $arg" ;;
   esac
 done

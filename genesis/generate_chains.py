@@ -397,17 +397,21 @@ def init_multi_chain_ecosystem(
             shutil.copy(contracts_yaml, output_dir / f"contracts_{chain_id}.yaml")
 
         # Dump Anvil state
+        # anvil_dumpState format changed between Anvil versions:
+        #   v1.3.x and earlier: result = base64(plain_json)
+        #   v1.5.x and later:   result = hex(gzip(json))   [0x-prefixed]
+        # In both cases we want l1-state.json.gz = gzip(plain_json).
         print("  Dumping L1 state...")
         sh(
-            f"cast rpc anvil_dumpState --rpc-url {ANVIL_DEFAULT_URL} | python3 -c "
-            f"\"import sys, json; print(json.load(sys.stdin)['result'])\" "
-            f"| python3 -c \"import sys, base64; sys.stdout.buffer.write(base64.b64decode(sys.stdin.read().strip()))\" "
-            f"> {l1_state_path}"
+            f"cast rpc anvil_dumpState --rpc-url {ANVIL_DEFAULT_URL} | python3 -c \""
+            f"import sys, json, gzip, base64; "
+            f"result = json.load(sys.stdin)['result']; "
+            f"raw = bytes.fromhex(result[2:]) if result.startswith('0x') else base64.b64decode(result); "
+            f"data = gzip.decompress(raw) if raw[:2] == b'\\x1f\\x8b' else raw; "
+            f"out = gzip.compress(data, compresslevel=9); "
+            f"sys.stdout.buffer.write(out)"
+            f"\" > {output_dir}/l1-state.json.gz"
         )
-
-        # Compress
-        sh(f"gzip -9 < {l1_state_path} > {output_dir}/l1-state.json.gz")
-        l1_state_path.unlink()
 
     finally:
         anvil_proc.terminate()

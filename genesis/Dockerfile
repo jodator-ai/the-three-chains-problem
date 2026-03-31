@@ -115,12 +115,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
     npm install -g yarn
 
 # forge + cast: copy from contracts-builder which already has foundry-zksync installed.
-# anvil: install from standard foundry — foundry-zksync does not ship an anvil binary.
+# anvil: copy from pinned foundry image — foundry-zksync does not ship an anvil binary.
+# Pinned to v1.5.1 so the generated l1-state.json.gz matches the runtime Anvil version.
 COPY --from=contracts-builder /root/.foundry/bin/forge /usr/local/bin/forge
 COPY --from=contracts-builder /root/.foundry/bin/cast  /usr/local/bin/cast
-RUN curl -L https://foundry.paradigm.xyz | bash && \
-    /root/.foundry/bin/foundryup && \
-    cp /root/.foundry/bin/anvil /usr/local/bin/anvil
+COPY --from=ghcr.io/foundry-rs/foundry:v1.5.1 /usr/local/bin/anvil /usr/local/bin/anvil
 
 # Copy compiled zkstack binary
 COPY --from=zkstack-builder /zksync-era/zkstack_cli/target/release/zkstack /usr/local/bin/zkstack

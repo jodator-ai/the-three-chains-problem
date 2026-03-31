@@ -6,7 +6,7 @@ services:
 
   # ── L1 (Anvil) ──────────────────────────────────────────────────────────────
   l1:
-    image: ghcr.io/foundry-rs/foundry:v1.3.4
+    image: ghcr.io/foundry-rs/foundry:v1.5.1
     volumes:
       - ./dev/l1/l1-state.json.gz:/l1-state.json.gz:ro
       - l1state:/home/foundry/l1state

@@ -16,7 +16,7 @@ readonly SCRIPT_NAME="generate-compose.sh"
 readonly DEFAULT_COUNT=2
 readonly DEFAULT_VERSION="v30.2"
 readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:v0.18.1"
-readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.3.4"
+readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
 readonly BASE_CHAIN_ID=6564
 
 readonly GATEWAY_CHAIN_ID=506

@@ -252,7 +252,7 @@ services:
         condition: service_healthy
 
   entrypoint-deployer-6565:
-    image: ghcr.io/foundry-rs/foundry:v1.3.4
+    image: ghcr.io/foundry-rs/foundry:v1.5.1
     entrypoint: ''
     user: 'root'
     volumes:

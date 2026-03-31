@@ -50,6 +50,7 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: 'false'
       KC_HOSTNAME_URL: 'http://localhost:5480'
       KC_HOSTNAME_ADMIN_URL: 'http://localhost:5480'
+      KC_METRICS_ENABLED: 'true'
     command:
       - start-dev
       - --import-realm
@@ -270,7 +271,7 @@ services:
         condition: service_completed_successfully
 
   bundler-6567:
-    image: quay.io/matterlabs_enterprise/prividium-bundler:v1.166.1
+    image: quay.io/matterlabs_enterprise/prividium-bundler:v1.169.1
     platform: linux/amd64
     restart: unless-stopped
     ports:

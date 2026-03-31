@@ -296,7 +296,7 @@ Generated files (gitignored):
 | zksync-os-server | latest |
 | Protocol v30.2 | Chains 1–4 pre-configured |
 | Protocol v31.0 | Chains 1–2 pre-configured; gateway mode available |
-| Prividium images | v1.166.1 |
+| Prividium images | v1.169.1 |
 | Foundry (runtime Anvil) | v1.5.1 |
 
 ## Troubleshooting

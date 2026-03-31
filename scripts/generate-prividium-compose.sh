@@ -37,7 +37,7 @@ readonly DEFAULT_COUNT=1
 readonly DEFAULT_VERSION="v30.2"
 readonly DEFAULT_SERVER_IMAGE="ghcr.io/matter-labs/zksync-os-server:v0.18.1"
 readonly DEFAULT_L1_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
-readonly DEFAULT_PRIVIDIUM_VERSION="v1.166.1"
+readonly DEFAULT_PRIVIDIUM_VERSION="v1.169.1"
 readonly DEFAULT_FOUNDRY_IMAGE="ghcr.io/foundry-rs/foundry:v1.5.1"
 readonly BASE_CHAIN_ID=6564
 readonly PORT_STRIDE=200
@@ -478,6 +478,7 @@ services:
       KC_HOSTNAME_STRICT_HTTPS: 'false'
       KC_HOSTNAME_URL: '${kc_host}'
       KC_HOSTNAME_ADMIN_URL: '${kc_host}'
+      KC_METRICS_ENABLED: 'true'
     command:
       - start-dev
       - --import-realm
@@ -773,6 +774,8 @@ services:
         condition: service_healthy
       zksyncos-${s}:
         condition: service_healthy
+      bundler-${s}:
+        condition: service_started
     ports:
       - '${p_api}:8000'
       - '${p_api_metrics}:9091'
@@ -800,6 +803,14 @@ services:
       - WEBAUTHN_ORIGIN=http://localhost:${p_user}
       - WEBAUTHN_REQUIRE_USER_VERIFICATION=false
       - EXTRA_PUBLIC_CODE_ADDRESSES=0x36615cf349d7f6344891b1e7ca7c72883f5dc049
+      - BUNDLER_ENABLED=true
+      - BUNDLER_RPC_URL=http://bundler-${s}:4337
+      - RATE_LIMIT_ENABLED=true
+      - RATE_LIMIT_AUTH_MAX=100
+      - RATE_LIMIT_PUBLIC_MAX=300
+      - RATE_LIMIT_USER_MAX=300
+      - RATE_LIMIT_RPC_MAX=1000
+      - RATE_LIMIT_WINDOW_MS=60000
 
   # ── admin panel ──────────────────────────────────────────────────────────────
   admin-panel-${s}:

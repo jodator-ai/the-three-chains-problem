@@ -182,18 +182,27 @@ Instance 1 uses the same default ports as upstream
 
 ## Examples
 
-Pre-generated output in `examples/`:
+Pre-generated output committed in `examples/`:
 
 | Directory | Command | Description |
 |---|---|---|
-| `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3 --output=examples/l2s-v30.2-3` | 3 chains, v30.2, L1 settlement |
-| `examples/l2s-v31.0-3/` ¹ | `./configure-l2s.sh --count=3 --version=v31.0 --output=examples/l2s-v31.0-3` | 3 chains, v31.0, L1 settlement |
-| `examples/l2s-v31.0-gateway-3/` ¹ | `./configure-l2s.sh --count=3 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-3` | Gateway + 3 chains, v31.0 |
+| `examples/l2s-v30.2-3/` | `./configure-l2s.sh --count=3 --output=examples/l2s-v30.2-3` | 3 bare L2 chains, v30.2, L1 settlement |
 | `examples/prividium-1/` | `./configure-prividiums.sh --count=1 --output=examples/prividium-1` | 1 Prividium stack (L1 has 3 chains; only 6565 runs) |
 | `examples/prividium-2/` | `./configure-prividiums.sh --count=2 --output=examples/prividium-2` | 2 Prividium stacks (L1 has 3 chains; 6565+6566 run) |
 | `examples/prividium-3/` | `./configure-prividiums.sh --count=3 --output=examples/prividium-3` | 3 full Prividium stacks (all 3 chains run) |
 
-¹ Requires genesis generation first (`./scripts/generate-genesis.sh --docker --count=3 --version=v31.0`). Needs 4 GB+ RAM — see [Genesis Generation](#genesis-generation-for-5-chains-v302--3-chains-v310) below.
+v31.0 examples are not committed — generate them first:
+
+```bash
+# 3 chains, v31.0 (no gateway)
+./scripts/generate-genesis.sh --docker --count=3 --version=v31.0
+./configure-l2s.sh --count=3 --version=v31.0 --output=examples/l2s-v31.0-3
+
+# Gateway + 3 chains, v31.0
+./configure-l2s.sh --count=3 --version=v31.0 --gateway --output=examples/l2s-v31.0-gateway-3
+```
+
+Needs 4 GB+ RAM for genesis — see [Genesis Generation](#genesis-generation-for-5-chains-v302--3-chains-v310).
 
 Each example is self-contained: all compose files, chain configs, genesis, and L1 state
 are in the same directory. Volume paths in compose files are relative to the output directory.
@@ -241,27 +250,44 @@ the-three-chains-problem/
 ├── scripts/
 │   ├── generate-chain-configs.sh # Writes chain_XXXX.yaml (embedded keys, version-aware)
 │   ├── generate-compose.sh       # Generates zksyncos compose files (± gateway)
-│   ├── generate-prividium-compose.sh  # Generates prividium compose files
-│   └── generate-genesis.sh       # Genesis generation for chains 5+ (Docker mode)
+│   ├── generate-prividium-compose.sh  # Generates Prividium compose files
+│   └── generate-genesis.sh       # Orchestrates Docker-based genesis generation
 ├── genesis/
-│   ├── Dockerfile                # Self-contained genesis generator image
+│   ├── Dockerfile                # Self-contained multi-stage genesis generator image
 │   ├── entrypoint.sh             # CLI wrapper (maps --chain-ids/--output to env vars)
-│   ├── generate_chains.py        # Genesis generation script (local mode)
+│   ├── generate_chains.py        # Genesis generation script (local/non-Docker mode)
 │   └── patch_deposits.py         # Post-processes L1 state to add rich-account deposits
 ├── configs/
-│   └── v30.2/
-│       └── l1-state.json.gz      # Custom Anvil L1 state (chains 1–4 pre-deployed)
-│                                 # (v31.0 assets are downloaded on first run)
-└── examples/                     # Pre-generated output for reference
-    ├── l2s-v30.2-3/              # 3 chains, v30.2
-    ├── l2s-v31.0-3/              # 3 chains, v31.0 (requires genesis gen; see note above)
-    ├── l2s-v31.0-gateway-3/      # gateway + 3 chains, v31.0 (requires genesis gen)
+│   ├── v30.2/
+│   │   ├── l1-state.json.gz      # Anvil L1 state (chains 6565–6568 pre-deployed + funded)
+│   │   ├── genesis.json          # Deterministic genesis block for protocol v30.2
+│   │   ├── keycloak-realm.json   # Keycloak realm template
+│   │   ├── chain_656[5-8].yaml   # zksyncos configs for 4 pre-built chains
+│   │   ├── wallets_656[5-6].yaml # Operator wallets (chains 6565–6566)
+│   │   ├── contracts_656[5-6].yaml  # L1 contract addresses (chains 6565–6566)
+│   │   └── prividium-656[5-7]/   # Per-chain Prividium block-explorer configs
+│   ├── v31.0/
+│   │   ├── l1-state.json.gz      # Downloaded on first run (~23 MB)
+│   │   ├── genesis.json          # Downloaded on first run
+│   │   ├── gateway-db.tar.gz     # Pre-seeded gateway chain state
+│   │   ├── chain_506.yaml        # Gateway chain config
+│   │   ├── chain_6565.yaml       # Chain 1 config
+│   │   └── chain_6566.yaml       # Chain 2 config
+│   └── bundler/                  # ERC-4337 bundler deployment scripts + contracts
+├── docs/
+│   └── learnings/                # Technical incident logs and agent retrospectives
+├── zksync-os-scripts/            # Fork of matter-labs/zksync-os-scripts used as genesis engine
+│                                 # (branch: multi-chain-n-support; minimal diff from upstream)
+└── examples/                     # Pre-generated reference output
+    ├── l2s-v30.2-3/              # 3 bare L2 chains, v30.2
     ├── prividium-1/              # 1 Prividium instance
-    └── prividium-3/              # 3 Prividium instances (shared postgres)
+    ├── prividium-2/              # 2 Prividium instances
+    └── prividium-3/              # 3 Prividium instances
 ```
 
 Generated files (gitignored):
 - `out/` — default output directory (wiped and recreated on every run)
+- `templates/` — reserved, not currently used
 
 ## Compatibility
 

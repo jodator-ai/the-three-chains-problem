@@ -38,6 +38,13 @@ import yaml
 ANVIL_DEFAULT_URL = "http://localhost:8545"
 ANVIL_RICH_PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 
+# Rich account that receives ETH on every L2 chain (matches zksync-os-scripts upstream)
+RICH_ACCOUNT = "0x36615cf349d7f6344891b1e7ca7c72883f5dc049"
+# Parameters matching the upstream zksync_os_generate_deposit binary
+_L2_DEPOSIT_AMOUNT = 100 * 10**18   # 100 ETH minted on L2
+_L2_GAS_LIMIT      = 500_000
+_L2_GAS_PER_PUBDATA = 800
+
 
 def sh(cmd: str, cwd: Path | None = None, env: dict | None = None) -> None:
     """Run a shell command, streaming output."""
@@ -64,6 +71,74 @@ def sh(cmd: str, cwd: Path | None = None, env: dict | None = None) -> None:
         formatted = cmd.replace(" --", "\n\t  --")
         print(f"ERROR: Command failed with exit code {result.returncode}:\n\t{formatted}", file=sys.stderr)
         sys.exit(result.returncode)
+
+
+def sh_output(cmd: str, cwd: Path | None = None) -> str:
+    """Run a shell command and return stripped stdout."""
+    cmd = " ".join(cmd.split())
+    result = subprocess.run(cmd, shell=True, cwd=cwd, capture_output=True, text=True)
+    if result.returncode != 0:
+        print(f"ERROR: Command failed: {cmd}\n{result.stderr}", file=sys.stderr)
+        sys.exit(result.returncode)
+    return result.stdout.strip()
+
+
+def deposit_rich_account(chain_id: int, bridgehub_address: str) -> None:
+    """Submit L1→L2 requestL2TransactionDirect so the rich account has ETH on chain {chain_id}.
+
+    Mirrors the upstream zksync_os_generate_deposit binary (--amount 100).
+    Uses cast send with Anvil impersonation — no private key required.
+    """
+    print(f"  Depositing {_L2_DEPOSIT_AMOUNT // 10**18} ETH for rich account on chain {chain_id}...")
+
+    gas_price = int(sh_output(f"cast gas-price --rpc-url {ANVIL_DEFAULT_URL}"), 16)
+    base_cost = int(
+        sh_output(
+            f"cast call {bridgehub_address}"
+            f" 'l2TransactionBaseCost(uint256,uint256,uint256,uint256)(uint256)'"
+            f" {chain_id} {gas_price} {_L2_GAS_LIMIT} {_L2_GAS_PER_PUBDATA}"
+            f" --rpc-url {ANVIL_DEFAULT_URL}"
+        ),
+        16,
+    )
+    mint_value = _L2_DEPOSIT_AMOUNT + base_cost
+
+    sh(f"cast rpc anvil_impersonateAccount {RICH_ACCOUNT} --rpc-url {ANVIL_DEFAULT_URL}")
+
+    # Build ABI-encoded calldata for requestL2TransactionDirect(L2TransactionRequestDirect)
+    # Avoids shell-quoting issues with cast tuple syntax.
+    def u256(v: int) -> str:
+        return format(v, "064x")
+
+    def padaddr(a: str) -> str:
+        clean = a[2:] if a.startswith(("0x", "0X")) else a
+        return clean.lower().zfill(64)
+
+    # Struct head (9 fields): static fields inline, dynamic fields as offsets.
+    # l2Calldata offset = 9*32 = 288, factoryDeps offset = 288+32 = 320.
+    calldata = "0x" + "".join([
+        "d52471c1",                  # selector: requestL2TransactionDirect
+        u256(32),                    # offset to struct encoding
+        u256(chain_id),              # chainId
+        u256(mint_value),            # mintValue
+        padaddr(RICH_ACCOUNT),       # l2Contract
+        u256(_L2_DEPOSIT_AMOUNT),    # l2Value
+        u256(288),                   # l2Calldata offset (9 * 32)
+        u256(_L2_GAS_LIMIT),         # l2GasLimit
+        u256(_L2_GAS_PER_PUBDATA),   # l2GasPerPubdataByteLimit
+        u256(320),                   # factoryDeps offset (288 + 32)
+        padaddr(RICH_ACCOUNT),       # refundRecipient
+        u256(0),                     # l2Calldata length = 0
+        u256(0),                     # factoryDeps array length = 0
+    ])
+
+    sh(
+        f"cast send --unlocked --from {RICH_ACCOUNT}"
+        f" --value {mint_value}"
+        f" --rpc-url {ANVIL_DEFAULT_URL}"
+        f" {bridgehub_address}"
+        f" {calldata}"
+    )
 
 
 def require_env(name: str) -> str:
@@ -360,6 +435,14 @@ def init_multi_chain_ecosystem(
             """,
             cwd=ecosystem_dir,
         )
+
+        # Deposit ETH for the rich account on each L2 chain.
+        # This mirrors the upstream zksync_os_generate_deposit binary (SKIP_DEPOSIT_TX=0).
+        # Must run while Anvil is still up, before the state dump below.
+        for chain_id in chain_ids:
+            contracts_yaml = ecosystem_dir / "chains" / str(chain_id) / "configs" / "contracts.yaml"
+            bridgehub_address = get_contract_address(contracts_yaml, "bridgehub_proxy_addr")
+            deposit_rich_account(chain_id, bridgehub_address)
 
         # Extract configs per chain
         for i, chain_id in enumerate(chain_ids):

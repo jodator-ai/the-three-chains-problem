@@ -146,11 +146,14 @@ RUN mkdir -p /zksync-os-scripts/local-chains/${PROTOCOL_VERSION}/default \
 COPY --from=contracts-builder /prebuilt/genesis.json \
     /zksync-os-scripts/local-chains/${PROTOCOL_VERSION}/genesis.json
 
-# Tell update_server.py to skip build steps (already done above) and deposit tx
-# (not needed for the local dev setup — operators are funded via Anvil impersonation).
+# Tell update_server.py to skip build steps (already done above).
+# SKIP_DEPOSIT_TX=1 skips the zksync_os_generate_deposit binary call (unavailable at runtime);
+# deposits are instead handled by patch_deposits.py (run after update_server.py in entrypoint.sh).
 ENV SKIP_BUILD=1
 ENV SKIP_DEPOSIT_TX=1
 ENV GENESIS_PREBUILT=1
+
+COPY patch_deposits.py /patch_deposits.py
 
 # Runtime env vars expected by update_server.py / lib/entry.py
 ENV ERA_CONTRACTS_PATH=/era-contracts

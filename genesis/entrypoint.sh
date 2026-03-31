@@ -51,4 +51,10 @@ echo "[entrypoint] Chain IDs:   $CHAIN_IDS"
 echo "[entrypoint] Output dir:  $OUTPUT_DIR"
 echo "[entrypoint] Protocol:    ${PROTOCOL_VERSION:-v30.2}"
 
-exec python3 /zksync-os-scripts/scripts/update_server.py
+python3 /zksync-os-scripts/scripts/update_server.py
+
+# Patch the generated L1 state to add rich-account deposits.
+# update_server.py runs with SKIP_DEPOSIT_TX=1 (zksync_os_generate_deposit is unavailable
+# at runtime), so deposits are missing from the state. patch_deposits.py adds them via
+# cast send + Anvil impersonation.
+python3 /patch_deposits.py

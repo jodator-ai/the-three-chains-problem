@@ -326,6 +326,27 @@ OIDC_JWKS_URI: http://keycloak-6566:8080/...
 BUNDLER_RPC_URL: http://bundler-6566:4337
 ```
 
+> **Note — alternative naming scheme (TBD):** The chain-ID suffix (`-6565`, `-6566`, `-6567`) has
+> two practical drawbacks: the numbers are visually similar and easy to misread, and suffix-based
+> names prevent `docker ps` from grouping all services of one instance together (they sort by
+> service type, not by instance). A cleaner alternative is an **instance token as prefix**, e.g.
+> `prividium-alpha`, `prividium-beta`, `prividium-gamma` (or `prividium-1/2/3`, `prividium-a/b/c`).
+>
+> Under such a scheme the examples above would become:
+>
+> | compose file | service | dev dir |
+> |---|---|---|
+> | `compose.prividium-alpha.yml` | `prividium-alpha-api` | `dev/prividium-alpha/` |
+> | `compose.prividium-beta.yml` | `prividium-beta-api` | `dev/prividium-beta/` |
+> | `compose.prividium-gamma.yml` | `prividium-gamma-api` | `dev/prividium-gamma/` |
+>
+> `docker ps` then lists all `prividium-alpha-*` services together. The chain ID stays inside the
+> config file (`chain_6565.yaml`) where precision matters, not in every filename.
+>
+> The specific token (`alpha/beta/gamma`, `a/b/c`, `1/2/3`) is not yet decided. The generator
+> script (`scripts/generate-prividium-compose.sh`) and the examples directory would both need
+> updating once a convention is chosen.
+
 ### 3e. Apply port stride (200 per instance)
 
 Each instance gets its own port range to avoid conflicts on the host:

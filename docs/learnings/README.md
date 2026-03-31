@@ -44,8 +44,27 @@ Started as a multi-L2 POC (`configure-l2s.sh`) and expanded over three sessions 
 | 1 | Mar 17–18 | 17:46 → (overnight) → 10:00–17:37 | ~7h40m active |
 | 2 | Mar 19 | 09:11–18:29 | ~9h20m active |
 | 3 | Mar 20 | 11:48–14:07 | ~2h20m active |
+| 4 | Mar 2026 | Anvil v1.5.1 upgrade + state format fix | ~1h active |
+| 5 | Mar 31 | Chain 6567 rich account 0 ETH diagnosis + fix | ~3h active |
 
-**Total active session time: ~19h20m** across 3 days (overnight gaps excluded).
+**Total active session time: ~24h** across 5 sessions.
+
+### Session 5 — Chain 6567 rich account fix
+
+The pre-built `l1-state.json.gz` was missing an L1→L2 deposit for chain 6567, and additionally
+the diamond proxy's priority queue head was at position 6 (from genesis init txs) while zksyncos
+always starts expecting position 0 — causing a panic at `model.rs:87`. Fix required:
+
+1. Understanding the priority queue head/tail mechanics (see
+   [`priority-queue-deposit-fix.md`](./priority-queue-deposit-fix.md))
+2. Surgical JSON manipulation of the L1 state to remove the stale `NewPriorityRequest` log
+3. Resetting diamond proxy storage slots 52 and 54 via `anvil_setStorageAt`
+4. Re-submitting the deposit as txId=0, mining 5 confirmation blocks
+5. Adding `patch_deposits.py` to automate this for future genesis runs
+
+**~2h was diagnostic** (confirming the stale-volume hypothesis was wrong, tracing the panic to the
+priority queue mismatch, finding the storage slots). **~1h was implementation** (patch_deposits.py,
+entrypoint.sh update, syncing to all 4 examples).
 
 ### Where the time went
 
@@ -144,3 +163,48 @@ Each fix required a full Docker build (no fast feedback). Failures included:
 3. **"The runtime image has no Rust/cargo"** — one sentence that clarifies SKIP_BUILD is mandatory, not optional.
 4. **"The configure script is 1 command; `./start.sh` separately is fine"** — saves the `--start` flag cycle.
 5. **Known zkstack quirks** — `--ignore-prerequisites`, `era-contracts/.git` retention, `default-configs` prereq. None are documented.
+
+---
+
+## Session 5 learnings — ZKsync OS priority queue mechanics
+
+These were learned during the chain 6567 rich account fix and are not obvious from reading the code.
+
+### The priority queue head/tail invariant
+
+Every ZKsync OS chain has a diamond proxy on L1 with a priority queue. The queue is used for
+L1→L2 deposits and system upgrades. **zksyncos always starts fresh with `next_l1_priority_id=0`
+and asserts the first event it finds has txId=0.** This means the L1 state snapshot must either:
+
+- Have head=0 (no init txs were processed before the snapshot), OR
+- Have the event logs for txIds 0..(head-1) still present in the Anvil history
+
+In practice, `zkstack ecosystem init` sends 6 initialization priority txs per chain. If the state
+is dumped after L2 batches execute those txs (advancing head to 6), the event logs are gone and
+zksyncos panics.
+
+**Fix:** Reset head and tail to 0 via `anvil_setStorageAt`, then re-submit the deposit as txId=0.
+
+### anvil_dumpState drops historical_states
+
+`anvil_dumpState` RPC does not include `historical_states` in the returned blob. Always:
+1. Load original state: `original = json.load(gzip.open(state_file))`
+2. Extract: `historical = original.get("historical_states")`
+3. After patching and dumping new state: `new_state["historical_states"] = historical`
+
+Without this, historical block queries on the L1 will return empty results.
+
+### l1-state.json.gz is shared across prividium examples
+
+`prividium-1`, `prividium-2`, and `prividium-3` all use the **same `l1-state.json.gz`**. All 3
+chains (6565, 6566, 6567) are pre-deployed and funded on L1 in that single file. The examples
+differ only in which L2 containers they start. Patching the state requires syncing 4 files:
+`configs/v30.2/l1-state.json.gz` and all three `examples/prividium-*/dev/l1/l1-state.json.gz`.
+
+### patch_deposits.py is the canonical deposit fix tool
+
+`genesis/patch_deposits.py` automates the full fix: starts Anvil with existing state, impersonates
+the rich account, calls `requestL2TransactionDirect` on each chain's bridgehub, dumps patched
+state, merges `historical_states` back. It runs automatically as part of Docker genesis
+(`entrypoint.sh` calls it after `update_server.py`) and is called by `generate_chains.py` for
+the local genesis path.

@@ -46,8 +46,9 @@ Started as a multi-L2 POC (`configure-l2s.sh`) and expanded over three sessions 
 | 3 | Mar 20 | 11:48–14:07 | ~2h20m active |
 | 4 | Mar 2026 | Anvil v1.5.1 upgrade + state format fix | ~1h active |
 | 5 | Mar 31 | Chain 6567 rich account 0 ETH diagnosis + fix | ~3h active |
+| 6 | Apr 1 | Blocks stuck at "sealed" — fake prover diagnosis + fix | ~1h active |
 
-**Total active session time: ~24h** across 5 sessions.
+**Total active session time: ~25h** across 6 sessions.
 
 ### Session 5 — Chain 6567 rich account fix
 
@@ -200,6 +201,65 @@ Without this, historical block queries on the L1 will return empty results.
 chains (6565, 6566, 6567) are pre-deployed and funded on L1 in that single file. The examples
 differ only in which L2 containers they start. Patching the state requires syncing 4 files:
 `configs/v30.2/l1-state.json.gz` and all three `examples/prividium-*/dev/l1/l1-state.json.gz`.
+
+---
+
+## Session 6 learnings — fake prover required for batch execution
+
+### Blocks stuck at "sealed" — root cause
+
+zksyncos seals blocks into batches and then waits for an **FRI proof** before committing the
+batch to L1. Without a proof, the L1 sender never commits, so blocks stay sealed forever and
+L2 transactions are never finalised. This is **not** an operator funding issue — operators at
+100 ETH still won't fix it.
+
+The full pipeline is: `sealed → FRI proof → SNARK proof → commit L1 tx → prove L1 tx → execute L1 tx`
+
+### Fix: enable fake provers in the chain config
+
+zksyncos has a built-in fake prover pool for local development. It is disabled by default.
+Enable it by adding to `chain_XXXX.yaml`:
+
+```yaml
+prover_api:
+  fake_fri_provers:
+    enabled: true       # 5 workers, 2s compute time per batch
+  fake_snark_provers:
+    enabled: true       # runs immediately after FRI proof
+```
+
+With this config, batches go from sealed → fully executed on L1 in ~30 seconds. No external
+prover service is required.
+
+### Diagnosing the stuck-at-sealed symptom
+
+```bash
+# Look for the proof-waiting signal (no error — just silence after this line):
+docker logs <zksyncos-container> 2>&1 | grep "FRI proving"
+# → "Received batch for FRI proving: N" followed by nothing = missing fake prover
+
+# After enabling fake provers, expected sequence:
+# "fake prover submitted proof"  (after ~5s)
+# "Received batch after FRI proving: N"
+# "sent to L1, waiting for inclusion" (commit)
+# "sent to L1, waiting for inclusion" (prove)
+# "sent to L1, waiting for inclusion" (execute)
+# "▶▶▶ Batch has been fully processed"
+```
+
+### Available config knobs (from `zksync-os-server config help prover_api`)
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `prover_api.fake_fri_provers.enabled` | false | Enable fake FRI pool |
+| `prover_api.fake_fri_provers.workers` | 5 | Parallel fake FRI workers |
+| `prover_api.fake_fri_provers.compute_time` | 2s | Simulated proof time |
+| `prover_api.fake_snark_provers.enabled` | false | Enable fake SNARK pool |
+
+Always run `zksync-os-server config help <section>` to enumerate available options for a
+given config section — the built-in help is the authoritative source.
+
+---
 
 ### patch_deposits.py is the canonical deposit fix tool
 

@@ -11,6 +11,11 @@ l1_sender:
   operator_commit_sk: '0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a'
   operator_prove_sk: '0x7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6'
   operator_execute_sk: '0x47e179ec197488593b187f80a00eb0da91f1b9d0b13f8733639f19c30a34926b'
+prover_api:
+  fake_fri_provers:
+    enabled: true
+  fake_snark_provers:
+    enabled: true
 rpc:
   address: 0.0.0.0:3052
 external_price_api_client:

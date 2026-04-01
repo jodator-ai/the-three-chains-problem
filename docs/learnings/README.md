@@ -46,7 +46,7 @@ Started as a multi-L2 POC (`configure-l2s.sh`) and expanded over three sessions 
 | 3 | Mar 20 | 11:48–14:07 | ~2h20m active |
 | 4 | Mar 2026 | Anvil v1.5.1 upgrade + state format fix | ~1h active |
 | 5 | Mar 31 | Chain 6567 rich account 0 ETH diagnosis + fix | ~3h active |
-| 6 | Apr 1 | Blocks stuck at "sealed" — fake prover diagnosis + fix | ~1h active |
+| 6 | Apr 1 | Blocks stuck at "sealed" — fake prover fix + block explorer behavior investigation | ~2h active |
 
 **Total active session time: ~25h** across 6 sessions.
 
@@ -258,6 +258,53 @@ docker logs <zksyncos-container> 2>&1 | grep "FRI proving"
 
 Always run `zksync-os-server config help <section>` to enumerate available options for a
 given config section — the built-in help is the authoritative source.
+
+---
+
+### Block explorer: "committed but not executed" is expected behavior
+
+After enabling fake provers, you may observe blocks showing "committed" or "sealed" in the block
+explorer UI but not "executed". This is **normal** — not a bug.
+
+**Root causes:**
+
+1. **~60s polling interval** — `BlockStatusService` (in the block explorer worker) polls for
+   status updates on roughly a 60-second cycle. There is no push mechanism; status changes are
+   always delayed by up to 60s after the L1 transaction lands.
+
+2. **One-batch lag** — the most recently indexed batch always stays at "committed" until the
+   *next* batch is processed. Block N advances to "executed" only when block N+1 is indexed.
+   This is inherent to how the block explorer tracks batch finalization; the "latest" batch is
+   never "executed" in the UI.
+
+**Confirmed experimentally (session 6):**
+- Sent test TX → included in block 3
+- Block 3: sealed → committed (~1 min after batch 3 landed on L1)
+- Block 3: committed → executed (when block 4 was indexed, ~8 min later)
+- Block 4: simultaneously becomes "committed" (and stays there until block 5)
+
+**Practical timeline for a test TX:**
+- T+0: TX sent → "sealed" immediately
+- T+30s: Fake provers finish, batch committed/proved/executed on L1
+- T+30s–90s: Block explorer worker picks up L1 events → block becomes "committed"
+- T+next batch + 30s–90s: Block advances to "executed" (requires another batch to land)
+
+**The bridging check:** When a user bridges and waits for "executed" status, they need at least
+two batches to pass. With default block timing this takes 1–3 minutes after the initial TX.
+
+### zksyncos-OS does not implement ZKsync Era's zks_* RPC namespace
+
+`zks_getBlockDetails`, `zks_getL1BatchDetails`, `zks_getTransactionDetails`, and all other
+`zks_*` methods return `{"error": {"code": -32601, "message": "Method not found"}}`.
+
+The block explorer still updates block statuses because it falls back to L1 event polling
+(watching the diamond proxy for commit/prove/execute events) rather than relying on the L2 RPC.
+The `BLOCKCHAIN_RPC_URL` in the data-fetcher is the L2 node; there is no `L1_RPC_URL` env var
+in the standard config — L1 connectivity is handled internally by the block explorer worker.
+
+**Implication:** Any tooling that relies on `zks_*` methods (e.g., ZKsync SDK's
+`provider.getBlockDetails()`, `provider.getL1BatchDetails()`) will fail against a zksyncos-OS
+node. Use standard `eth_*` methods only.
 
 ---
 

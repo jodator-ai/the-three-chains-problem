@@ -277,20 +277,29 @@ explorer UI but not "executed". This is **normal** — not a bug.
    This is inherent to how the block explorer tracks batch finalization; the "latest" batch is
    never "executed" in the UI.
 
-**Confirmed experimentally (session 6):**
-- Sent test TX → included in block 3
-- Block 3: sealed → committed (~1 min after batch 3 landed on L1)
-- Block 3: committed → executed (when block 4 was indexed, ~8 min later)
-- Block 4: simultaneously becomes "committed" (and stays there until block 5)
+**Confirmed experimentally — extended 55-tx test across 14 blocks (session 6):**
+
+- Sent 55 txs in waves → blocks 3–13 produced over ~3 minutes
+- Blocks 0–10: `executed` (older batches, all fine)
+- Blocks 11–13: stayed `committed` for **5+ minutes** after all txs stopped — no new block, no advancement
+- Sent 1 more tx → block 14 produced → **all three** (11, 12, 13) flipped to `executed` simultaneously
+- Block 14 immediately became the new `committed`, waiting for block 15
+
+**Key insight — lag is unbounded without traffic:**
+If the chain goes idle after a burst of txs, the most recent batch(es) will stay `committed` forever
+until the next transaction arrives to trigger a new batch. This is not a time-based timeout — it is
+purely driven by the next batch being indexed.
 
 **Practical timeline for a test TX:**
-- T+0: TX sent → "sealed" immediately
+- T+0: TX sent → "sealed" within seconds
 - T+30s: Fake provers finish, batch committed/proved/executed on L1
-- T+30s–90s: Block explorer worker picks up L1 events → block becomes "committed"
-- T+next batch + 30s–90s: Block advances to "executed" (requires another batch to land)
+- T+60–90s: Block explorer picks up L1 events → block becomes "committed"
+- T+next batch landed + 60–90s: Block advances to "executed"
+  - If chain is idle: this never happens until a new tx is sent
+  - If chain has traffic: typically 1–2 min after the prior step
 
-**The bridging check:** When a user bridges and waits for "executed" status, they need at least
-two batches to pass. With default block timing this takes 1–3 minutes after the initial TX.
+**The bridging check:** Waiting for "executed" requires the *following* batch to also land and be
+indexed. On an idle chain, always send a no-op tx (e.g., 0 ETH self-transfer) to unblock it.
 
 ### zksyncos-OS does not implement ZKsync Era's zks_* RPC namespace
 

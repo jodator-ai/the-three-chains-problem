@@ -163,7 +163,7 @@ services:
     image: postgres:15
     restart: unless-stopped
     ports:
-      - '5432:5432'
+      - '127.0.0.1:5432:5432'
     volumes:
       - postgres:/var/lib/postgresql/data
     environment:
